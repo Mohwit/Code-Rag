@@ -1,6 +1,8 @@
 """Module for chunking and summarizing Python code at class and function levels."""
 import sys
 import os
+from multiprocessing import Pool
+import glob
 
 # Get the parent directory and add it to sys.path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -272,16 +274,53 @@ def _process_function(node, code_bytes, file_path):
         "parameters": params
     }
 
+def process_file(file_path):
+    """Process a single file and return its chunks."""
+    print(f"Processing file: {file_path}")
+    try:
+        chunks = chunk_code(file_path)
+        return file_path, chunks
+    except Exception as e:
+        print(f"Error processing {file_path}: {str(e)}")
+        return file_path, []
+
+def process_directory(directory_path, num_processes=None):
+    """
+    Process all Python files in the given directory in parallel.
+    
+    Args:
+        directory_path (str): Path to the directory containing Python files
+        num_processes (int, optional): Number of processes to use. Defaults to CPU count.
+    
+    Returns:
+        dict: Dictionary mapping file paths to their chunks
+    """
+    # Get all Python files in the directory
+    py_files = glob.glob(os.path.join(directory_path, "*.py"))
+    
+    if not py_files:
+        print(f"No Python files found in {directory_path}")
+        return {}
+    
+    # Create a process pool
+    with Pool(processes=num_processes) as pool:
+        # Process all files in parallel
+        results = pool.map(process_file, py_files)
+    
+    # Convert results to dictionary
+    return dict(results)
+
 if __name__ == "__main__":
-    # Example usage
-    test_file = "../local-test-files/keypoints_model_architecture.py"
-    # test_file = "../local-test-files/pose_classification_model_train.py"
-    # test_file = "../local-test-files/utils.py"
-    print(f"Processing file: {test_file}")
-    chunks = chunk_code(test_file)
-    for chunk in chunks:
-        print("\n" + "="*50)
-        print(f"Type: {chunk['type']}")
-        print(f"Name: {chunk['name']}")
-        print(f"Summary: {chunk['summary']}")
-        print(f"Code:\n{chunk['code']}")
+    # Example usage with directory
+    test_dir = "../local-test-files"
+    results = process_directory(test_dir)
+    
+    # Print results for each file
+    for file_path, chunks in results.items():
+        print(f"\nFile: {file_path}")
+        print("="*50)
+        for chunk in chunks:
+            print(f"\nType: {chunk['type']}")
+            print(f"Name: {chunk['name']}")
+            print(f"Summary: {chunk['summary']}")
+            print(f"Code:\n{chunk['code']}")
