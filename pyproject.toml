@@ -6,4 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "anthropic>=0.46.0",
+    "chromadb>=0.6.3",
+    "sentence-transformers>=3.4.1",
 ]

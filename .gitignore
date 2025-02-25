@@ -7,3 +7,6 @@ __pycache__/
 
 ## local test files
 local-test-files/
+
+## embeddings
+chroma_db/

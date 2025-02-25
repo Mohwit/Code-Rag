@@ -92,9 +92,20 @@ def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes)
     block_codes = []
     end_idx = start_idx
     current_context = None
+    function_calls = set()
+    class_instances = set()
+    start_line = nodes[start_idx].start_point[0] + 1  # Adding 1 for 1-based line numbering
     
     while end_idx < total_nodes:
         node = nodes[end_idx]
+        
+        # Track function calls and class instantiations
+        if node.type == "call":
+            function_name = get_node_text(node.child_by_field_name("function"), code_bytes)
+            function_calls.add(function_name)
+        elif node.type == "class_definition":
+            class_name = get_node_text(node.child_by_field_name("name"), code_bytes)
+            class_instances.add(class_name)
         
         # Skip if this is part of a previously processed block
         if end_idx > start_idx and node.start_byte < nodes[start_idx].end_byte:
@@ -135,6 +146,7 @@ def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes)
     if block_codes:
         combined_code = "\n".join(block_codes)
         block_type = current_context if current_context else "code_block"
+        end_line = nodes[end_idx - 1].end_point[0] + 1
         
         # Create a meaningful name based on the content
         if current_context:
@@ -153,7 +165,13 @@ def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes)
             "code": combined_code,
             "summary": summary,
             "file_path": file_path,
-            "docstring": ""
+            "docstring": "",
+            "metadata": {
+                "start_line": start_line,
+                "end_line": end_line,
+                "function_calls": list(function_calls),
+                "class_instances": list(class_instances)
+            }
         }, end_idx
     
     return None, start_idx
@@ -228,6 +246,26 @@ def _process_class(node, code_bytes, file_path):
     body_node = node.child_by_field_name("body")
     docstring = get_docstring(body_node, code_bytes) if body_node else ""
     
+    # Get line numbers
+    start_line = node.start_point[0] + 1
+    end_line = node.end_point[0] + 1
+    
+    # Find function calls and class instances within the class
+    function_calls = set()
+    class_instances = set()
+    
+    def traverse_node(node):
+        if node.type == "call":
+            function_name = get_node_text(node.child_by_field_name("function"), code_bytes)
+            function_calls.add(function_name)
+        elif node.type == "class_definition":
+            class_name = get_node_text(node.child_by_field_name("name"), code_bytes)
+            class_instances.add(class_name)
+        for child in node.children:
+            traverse_node(child)
+    
+    traverse_node(node)
+    
     # Generate AI summary of the class
     summary = generate_code_summary(class_code)
     
@@ -237,7 +275,13 @@ def _process_class(node, code_bytes, file_path):
         "code": class_code,
         "summary": summary,
         "file_path": file_path,
-        "docstring": docstring
+        "docstring": docstring,
+        "metadata": {
+            "start_line": start_line,
+            "end_line": end_line,
+            "function_calls": list(function_calls),
+            "class_instances": list(class_instances)
+        }
     }
 
 def _process_function(node, code_bytes, file_path):
@@ -261,6 +305,26 @@ def _process_function(node, code_bytes, file_path):
             if param.type == "identifier":
                 params.append(get_node_text(param, code_bytes))
     
+    # Get line numbers
+    start_line = node.start_point[0] + 1
+    end_line = node.end_point[0] + 1
+    
+    # Find function calls and class instances within the function
+    function_calls = set()
+    class_instances = set()
+    
+    def traverse_node(node):
+        if node.type == "call":
+            function_name = get_node_text(node.child_by_field_name("function"), code_bytes)
+            function_calls.add(function_name)
+        elif node.type == "class_definition":
+            class_name = get_node_text(node.child_by_field_name("name"), code_bytes)
+            class_instances.add(class_name)
+        for child in node.children:
+            traverse_node(child)
+    
+    traverse_node(node)
+    
     # Generate AI summary of the function
     summary = generate_code_summary(func_code)
     
@@ -271,7 +335,13 @@ def _process_function(node, code_bytes, file_path):
         "summary": summary,
         "file_path": file_path,
         "docstring": docstring,
-        "parameters": params
+        "parameters": params,
+        "metadata": {
+            "start_line": start_line,
+            "end_line": end_line,
+            "function_calls": list(function_calls),
+            "class_instances": list(class_instances)
+        }
     }
 
 def process_file(file_path):
@@ -323,4 +393,20 @@ if __name__ == "__main__":
             print(f"\nType: {chunk['type']}")
             print(f"Name: {chunk['name']}")
             print(f"Summary: {chunk['summary']}")
+            
+            # Print metadata information
+            if 'metadata' in chunk:
+                print("\nMetadata:")
+                print(f"  Start Line: {chunk['metadata']['start_line']}")
+                print(f"  End Line: {chunk['metadata']['end_line']}")
+                if chunk['metadata'].get('function_calls'):
+                    print(f"  Function Calls: {', '.join(chunk['metadata']['function_calls'])}")
+                if chunk['metadata'].get('class_instances'):
+                    print(f"  Class Instances: {', '.join(chunk['metadata']['class_instances'])}")
+            
+            # Print parameters if it's a function
+            if chunk['type'] == 'function' and 'parameters' in chunk:
+                print(f"Parameters: {', '.join(chunk['parameters'])}")
+            
             print(f"Code:\n{chunk['code']}")
+            print("-"*50)
