@@ -278,7 +278,7 @@ def process_file(file_path):
     """Process a single file and return its chunks."""
     print(f"Processing file: {file_path}")
     try:
-        chunks = chunk_code(file_path)
+        chunks = a(file_path)
         return file_path, chunks
     except Exception as e:
         print(f"Error processing {file_path}: {str(e)}")
