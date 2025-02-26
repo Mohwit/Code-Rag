@@ -10,3 +10,6 @@ local-test-files/
 
 ## embeddings
 chroma_db/
+
+## sephora code base for testing
+sephora-tiktok-trends-main/
