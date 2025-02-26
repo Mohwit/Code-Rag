@@ -7,6 +7,10 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict
 from coderag.embedding.summarizer import process_directory
+import anthropic
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class CodeEmbedder:
     def __init__(self, collection_name: str = "code_chunks", persist_directory: str = "../chroma_db", 
@@ -82,18 +86,50 @@ class CodeEmbedder:
                 ids=[doc_id]
             )
             
-    def search(self, query: str, n_results: int = 5) -> List[Dict]:
+    def generate_hypothetical_answer(self, query: str) -> str:
         """
-        Search for code chunks similar to query.
+        Generate a hypothetical code summary that would answer the query.
+        This mimics the format of our stored code summaries.
+        
+        Args:
+            query (str): Search query
+            
+        Returns:
+            str: Hypothetical code summary
+        """
+        hyde_prompt = f"""Given this question about code: "{query}"
+        Write a brief technical summary that would answer this question, as if describing a relevant code snippet.
+        Focus on implementation details and keep it concise (2-3 sentences)."""
+        
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20240620",
+            temperature=0,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": hyde_prompt}]
+        )
+        
+        return response.content[0].text
+
+    def search(self, query: str, n_results: int = 7, use_hyde: bool = True) -> List[Dict]:
+        """
+        Search for code chunks similar to query using HYDE technique.
         
         Args:
             query (str): Search query
             n_results (int): Number of results to return
+            use_hyde (bool): Whether to use HYDE technique
             
         Returns:
             List[Dict]: List of matching summaries with metadata (including code)
         """
-        query_embedding = self.model.encode(query).tolist()
+        if use_hyde:
+            # Generate hypothetical answer and use it for embedding
+            hypothetical_answer = self.generate_hypothetical_answer(query)
+            query_embedding = self.model.encode(hypothetical_answer).tolist()
+        else:
+            # Use original query directly
+            query_embedding = self.model.encode(query).tolist()
         
         results = self.collection.query(
             query_embeddings=[query_embedding],
@@ -103,10 +139,10 @@ class CodeEmbedder:
 
 if __name__ == "__main__":
     embedder = CodeEmbedder()
-    embedder.embed_directory("../local-test-files")
+    # embedder.embed_directory("../sephora-tiktok-trends-main")
     
     # Test the search function
-    results = embedder.search("Explain how we are plotting the bar graph?")
+    results = embedder.search("Explain how comments are loaded from vector database and how is the chat response generated from them?")
     
     # Print results in a clean format
     for i, (summary, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0]), 1):
@@ -120,4 +156,9 @@ if __name__ == "__main__":
         print(metadata['code'])
         print("\nDocstring:")
         print(metadata['docstring'])
+        print("\nFunction Calls:")
+        print(metadata['function_calls'])
+        print("\nClass Instances:")
+        print(metadata['class_instances'])
         print("=" * 50)
+    

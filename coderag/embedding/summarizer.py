@@ -356,7 +356,7 @@ def process_file(file_path):
 
 def process_directory(directory_path, num_processes=None):
     """
-    Process all Python files in the given directory in parallel.
+    Process all Python files in the given directory and its subdirectories in parallel.
     
     Args:
         directory_path (str): Path to the directory containing Python files
@@ -365,8 +365,12 @@ def process_directory(directory_path, num_processes=None):
     Returns:
         dict: Dictionary mapping file paths to their chunks
     """
-    # Get all Python files in the directory
-    py_files = glob.glob(os.path.join(directory_path, "*.py"))
+    # Get all Python files in the directory and subdirectories
+    py_files = []
+    for root, _, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith('.py'):
+                py_files.append(os.path.join(root, file))
     
     if not py_files:
         print(f"No Python files found in {directory_path}")
@@ -382,7 +386,9 @@ def process_directory(directory_path, num_processes=None):
 
 if __name__ == "__main__":
     # Example usage with directory
-    test_dir = "../local-test-files"
+    from dotenv import load_dotenv
+    load_dotenv()
+    test_dir = os.getenv("CODE_REPO_PATH")
     results = process_directory(test_dir)
     
     # Print results for each file

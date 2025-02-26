@@ -1,18 +1,27 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
 def create_code_file(file_path, code):
     """
-    Creates a new file (or overwrites an existing one) at the given file path
-    and writes the provided code into it.
+    Creates a new file at the given file path. Automatically resolves relative paths
+    to absolute paths using CODE_REPO_PATH.
 
     Parameters:
-      file_path (str): The full path (including filename) where the file should be created.
-      code (str): The code (or text) to write into the file.
+        file_path (str): The path (relative or absolute) where the file should be created
+        code (str): The code to write into the file
 
     Returns:
-      str: A success message indicating the file was created.
+        tuple: (success message, file content)
     """
-    # Ensure the parent directories exist.
+    # Convert relative path to absolute path if needed
+    if not os.path.isabs(file_path):
+        file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip('/'))
+
+    # Ensure the parent directories exist
     directory = os.path.dirname(file_path)
     if not os.path.exists(directory):
         os.makedirs(directory)

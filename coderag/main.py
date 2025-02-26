@@ -1,4 +1,4 @@
-""" Main file  for code analyzer """
+""" Main file for code analyzer """
 from agent import chat
 
 def main():

@@ -162,5 +162,8 @@ def parse_project(project_directory):
     return "\n".join(output)
 
 if __name__ == "__main__":
-    out = parse_project("../local-test-files")
+    from dotenv import load_dotenv
+    load_dotenv()
+    CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+    out = parse_project(CODE_REPO_PATH)
     print(out)
