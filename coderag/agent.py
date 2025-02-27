@@ -7,6 +7,7 @@ import anthropic
 import json
 import os
 from dotenv import load_dotenv
+import asyncio
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
@@ -243,12 +244,15 @@ async def generate_events(user_message: str, session_id: str):
             conversation_histories[session_id].append({"role": "assistant", "content": final_response})
 
         if use_canvas:
-            # First, send the normal message to the chat
-            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
-            
+     
             # Then, send the canvas update
             yield f"data: {json.dumps({'type': 'canvas', 'content': {'name': 'none', 'text': tool_result}})}\n\n"
-            
+
+            await asyncio.sleep(0.1) 
+
+            # # First, send the normal message to the chat
+            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"   
+
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
 
