@@ -1,5 +1,8 @@
 """ Agent for code analyzer """
 """ Testing"""
+
+"""RUN : uvicorn agent:app --host 0.0.0.0 --port 8080 --reload"""
+
 import anthropic
 import json
 import os
@@ -240,6 +243,10 @@ async def generate_events(user_message: str, session_id: str):
             conversation_histories[session_id].append({"role": "assistant", "content": final_response})
 
         if use_canvas:
+            # First, send the normal message to the chat
+            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
+            
+            # Then, send the canvas update
             yield f"data: {json.dumps({'type': 'canvas', 'content': {'name': 'none', 'text': tool_result}})}\n\n"
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
