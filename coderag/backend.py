@@ -8,6 +8,7 @@ import json
 from agent import chat  # Ensure this exists
 
 app = FastAPI()
+conversation_histories = {} 
 
 # Add CORS middleware
 app.add_middleware(
@@ -24,28 +25,24 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
 
+async def generate_events(user_message: str, session_id: str):
 
-async def generate_events(user_message: str):
+    if session_id not in conversation_histories:
+        conversation_histories[session_id] = []
+
+    # Check if the last message is already the same user input to prevent duplication
+    if not conversation_histories[session_id] or conversation_histories[session_id][-1] != {"role": "user", "content": user_message}:
+        conversation_histories[session_id].append({"role": "user", "content": user_message})
+
     try:
-        # Call the chat function in a non-blocking way
-        response = await asyncio.to_thread(chat, user_message)
+        final_response = chat(user_message)  # Call chat() to get the final response
 
-        # Determine if canvas is required
-        use_canvas = False
-        tool_name = response.get("tool_name")  # Extract tool_name from response
-        if tool_name in ["modify_code_file", "create_code_file"]:
-            use_canvas = True
 
-        response_payload = {
-            "type": "canvas" if use_canvas else "message",
-            "content": {
-                "name": response.get("file_name", "None") if use_canvas else "None",
-                "text": response.get("text", ""),
-            }
-        }
+        # Avoid appending duplicate responses
+        if not conversation_histories[session_id] or conversation_histories[session_id][-1] != {"role": "assistant", "content": final_response}:
+            conversation_histories[session_id].append({"role": "assistant", "content": final_response})
 
-        # Yield response as an event stream
-        yield f"data: {json.dumps(response_payload)}\n\n"
+        yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
 
     except Exception as e:
         print(f"Error occurred: {str(e)}")
@@ -61,7 +58,7 @@ async def root():
 async def chat_endpoint(request_data: ChatRequest):
     try:
         return StreamingResponse(
-            generate_events(request_data.message),  # Pass only 'message'
+            generate_events(request_data.message, request_data.session_id),  # Pass only 'message'
             media_type="text/event-stream",
             headers={
                 'Cache-Control': 'no-cache',
