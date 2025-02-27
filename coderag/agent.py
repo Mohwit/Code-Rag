@@ -45,7 +45,7 @@ tools = [
     },
     {
         "name": "modify_code_file",
-        "description": "Modify a code file by either replacing a range of lines or inserting new code",
+        "description": "Modify a code file by replacing a range of lines with new code. When modifying existing code, start_line and end_line must be specified to indicate the exact lines to replace.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -55,18 +55,18 @@ tools = [
                 },
                 "new_code": {
                     "type": "string",
-                    "description": "New code to insert or replace with"
+                    "description": "New code to replace the specified line range"
                 },
                 "start_line": {
                     "type": "integer",
-                    "description": "Optional starting line number for modification (1-based indexing)"
+                    "description": "Starting line number for modification (1-based indexing). Must be provided when modifying existing code."
                 },
                 "end_line": {
                     "type": "integer",
-                    "description": "Optional ending line number for modification (1-based indexing)"
+                    "description": "Ending line number for modification (1-based indexing). Must be provided when modifying existing code."
                 }
             },
-            "required": ["file_path", "new_code"]
+            "required": ["file_path", "new_code", "start_line", "end_line"]
         }
     },
     {
@@ -116,14 +116,17 @@ def process_tool_call(tool_name, tool_input):
         return search_similar_code(**tool_input)
     return None
 
-def chat(user_message):
+def chat(user_message, messages=None):
     print(f"\n{'='*50}\nUser Message: {user_message}\n{'='*50}")
-    messages = [
-        {"role": "user", "content": user_message}
-    ]
+    
+    # Initialize or update messages list
+    if messages is None:
+        messages = []
+    messages.append({"role": "user", "content": user_message})
+    
     try:
         response = client.messages.create(
-            system= system_prompt,
+            system=system_prompt,
             model="claude-3-5-sonnet-20240620",
             temperature=0,
             max_tokens=4096,
@@ -157,7 +160,7 @@ def chat(user_message):
                 }
             ])
             response = client.messages.create(
-                system= system_prompt,
+                system=system_prompt,
                 model="claude-3-haiku-20240307",
                 temperature=0,
                 max_tokens=4096,
@@ -174,10 +177,10 @@ def chat(user_message):
             None,
         )
         print(f"\nFinal Response: {final_response}")
-        return final_response
+        return final_response, messages
     except Exception as e:
         print(f"Error occurred: {str(e)}")
-        return None
+        return None, messages
     
 
 if __name__ == "__main__":
