@@ -5,6 +5,13 @@ import json
 import os
 from dotenv import load_dotenv
 
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import asyncio
+
+
 from tools.modify import modify_code_file
 from tools.read import read_code_file
 from tools.write import create_code_file
@@ -116,8 +123,15 @@ def process_tool_call(tool_name, tool_input):
         return search_similar_code(**tool_input)
     return None
 
+tool_name = None 
+tool_result = None
+
 def chat(user_message):
-    print(f"\n{'='*50}\nUser Message: {user_message}\n{'='*50}")
+
+    global tool_name
+    global tool_result
+
+#    print(f"\n{'='*50}\nUser Message: {user_message}\n{'='*50}")
     messages = [
         {"role": "user", "content": user_message}
     ]
@@ -179,7 +193,93 @@ def chat(user_message):
         print(f"Error occurred: {str(e)}")
         return None
     
+##############################################################################################
+app = FastAPI()
+conversation_histories = {} 
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Define request model
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str = "default"
+
+async def generate_events(user_message: str, session_id: str):
+    global tool_result, tool_name  # Ensure tool_name is accessible
+
+   
+
+    if session_id not in conversation_histories:
+        conversation_histories[session_id] = []
+
+    # Avoid duplicate user messages
+    if not conversation_histories[session_id] or conversation_histories[session_id][-1] != {"role": "user", "content": user_message}:
+        conversation_histories[session_id].append({"role": "user", "content": user_message})
+
+    try:
+        final_response = chat(user_message)  # Call chat from agent.py
+
+        print(f"\nFinal Response: {final_response}")
+
+        # Tools that require canvas updates
+        canvas_tools = {"modify_code_file", "create_code_file"}
+
+        # Check if the tool used is one that requires a canvas update
+        use_canvas = tool_name in canvas_tools  
+
+        # Avoid duplicate assistant responses
+        if not conversation_histories[session_id] or conversation_histories[session_id][-1] != {"role": "assistant", "content": final_response}:
+            conversation_histories[session_id].append({"role": "assistant", "content": final_response})
+
+        if use_canvas:
+            yield f"data: {json.dumps({'type': 'canvas', 'content': {'name': 'none', 'text': tool_result}})}\n\n"
+        else:
+            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+
+@app.get("/")
+async def root():
+    return {"message": "API is running"}
+
+
+@app.post("/chat")
+async def chat_endpoint(request_data: ChatRequest):
+    try:
+        return StreamingResponse(
+            generate_events(request_data.message, request_data.session_id),  # Pass only 'message'
+            media_type="text/event-stream",
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no'
+            }
+        )
+
+    except Exception as e:
+        print(f"Error in chat_endpoint: {str(e)}")
+        return StreamingResponse(
+            [f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"],
+            media_type="text/event-stream"
+        )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+####################################################################################################
 if __name__ == "__main__":
     pass
     # modify_code_file("../local-test-files/pose_classification_model_train.py")

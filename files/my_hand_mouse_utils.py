@@ -1,3 +1,90 @@
+import sys
+import os
+import cv2
+import mediapipe
+import pyautogui
+import time
+import numpy as np
+import pytesseract
+import my_hand_mouse_utils
+import easyocr
+import pygame
+import os
+import cv2
+import mediapipe
+import pyautogui
+import time
+import numpy as np
+import pytesseract
+import my_hand_mouse_utils
+import easyocr
+import pygame
+def decide_drag_direction(hand_points, min_drag_distance_left, min_drag_distance_right, last_point):
+    """Decide the drag direction based on hand points and distance thresholds."""
+    if len(hand_points) < 2:
+        return None, None  # Not enough points to determine direction
+    if last_point is None:
+        return None, hand_points[6]
+
+    current_point = hand_points[6]
+
+    dist = manhattan_distance(last_point, current_point)  # Use Manhattan distance
+
+    # Check if the distance meets either left or right drag thresholds
+    if dist >= min_drag_distance_left or dist >= min_drag_distance_right:
+        delta_x = last_point[0] - current_point[0]
+        if abs(delta_x) > abs(last_point[1] - current_point[1]):  # Horizontal drag
+            if delta_x < 0:
+                return 'right', None  # Dragging right
+            else:
+                return 'left', None  # Dragging left
+
+    return None, current_point  # No valid drag detected
+def manhattan_distance(point1, point2):
+    return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
+
+def decide_drag_direction(hand_points, min_drag_distance_left, min_drag_distance_right, last_point):
+    """Decide the drag direction based on hand points and distance thresholds."""
+    if len(hand_points) < 2:
+        return None, None  # Not enough points to determine direction
+    if last_point is None:
+        return None, hand_points[6]
+
+    current_point = hand_points[6]
+
+    dist = manhattan_distance(last_point, current_point)  # Use Manhattan distance
+
+    # Check if the distance meets either left or right drag thresholds
+    if dist >= min_drag_distance_left or dist >= min_drag_distance_right:
+        delta_x = last_point[0] - current_point[0]
+        if abs(delta_x) > abs(last_point[1] - current_point[1]):  # Horizontal drag
+            if delta_x < 0:
+                return 'right', None  # Dragging right
+            else:
+                return 'left', None  # Dragging left
+
+    return None, current_point  # No valid drag detected
+def decide_drag_direction(hand_points, min_drag_distance_left, min_drag_distance_right, last_point):
+    """Decide the drag direction based on hand points and distance thresholds."""
+    if len(hand_points) < 2:
+        return None, None  # Not enough points to determine direction
+    if last_point is None:
+        return None, hand_points[6]
+
+    current_point = hand_points[6]
+
+    dist = euclidean_distance(last_point, current_point)  # Use Euclidean distance
+
+    # Check if the distance meets either left or right drag thresholds
+    if dist >= min_drag_distance_left or dist >= min_drag_distance_right:
+        delta_x = last_point[0] - current_point[0]
+        if abs(delta_x) > abs(last_point[1] - current_point[1]):  # Horizontal drag
+            if delta_x < 0:
+                return 'right', None  # Dragging right
+            else:
+                return 'left', None  # Dragging left
+
+    return None, current_point  # No valid drag detected
 import cv2
 import mediapipe
 import pyautogui
@@ -56,26 +143,7 @@ def fill_hand_points(image, one_hand_landmarks, image_width, image_height, scree
 def euclidean_distance(point1, point2):
     return np.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
 def decide_drag_direction(hand_points, min_drag_distance_left, min_drag_distance_right, last_point):
-    """Decide the drag direction based on hand points and distance thresholds."""
-    if len(hand_points) < 2:
-        return None, None  # Not enough points to determine direction
-    if last_point is None:
-        return None, hand_points[6]
-
-    current_point = hand_points[6]
-
-    dist = abs(last_point[0] - current_point[0]) + abs(last_point[1] - current_point[1])  # Manhattan distance
-
-    # Check if the distance meets either left or right drag thresholds
-    if dist >= min_drag_distance_left or dist >= min_drag_distance_right:
-        delta_x = last_point[0] - current_point[0]
-        if abs(delta_x) > abs(last_point[1] - current_point[1]):  # Horizontal drag
-            if delta_x < 0:
-                return 'right', None  # Dragging right
-            else:
-                return 'left', None  # Dragging left
-
-    return None, current_point  # No valid drag detecteddef decide_drag_direction(hand_points, min_drag_distance_left, min_drag_distance_right ,last_point):
+ 
     """Decide the drag direction based on hand points and distance thresholds."""
     if len(hand_points) < 2:
         return None,None  # Not enough points to determine direction
