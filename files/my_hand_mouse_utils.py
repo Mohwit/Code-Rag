@@ -8,6 +8,29 @@ import pytesseract
 import my_hand_mouse_utils
 import easyocr
 import pygame
+import matlabimport pygame
+import matlabimport easyocr
+import pygame
+import os
+import cv2
+import mediapipe
+import pyautogui
+import time
+import numpy as np
+import pytesseract
+import my_hand_mouse_utils
+import easyocr
+import pygame
+import sys
+import cv2
+import mediapipe
+import pyautogui
+import time
+import numpy as np
+import pytesseract
+import my_hand_mouse_utils
+import easyocr
+import pygame
 import os
 import cv2
 import mediapipe

@@ -248,6 +248,7 @@ async def generate_events(user_message: str, session_id: str):
             
             # Then, send the canvas update
             yield f"data: {json.dumps({'type': 'canvas', 'content': {'name': 'none', 'text': tool_result}})}\n\n"
+            
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
 
