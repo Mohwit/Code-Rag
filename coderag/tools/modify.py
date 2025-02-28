@@ -4,15 +4,36 @@ This tool is used to modify a code file by either replacing a range of lines or 
 
 import os
 from dotenv import load_dotenv
+from embedding.embedd import CodeEmbedder
+from embedding.summarizer import process_file
+from typing import List, Dict
 
 load_dotenv()
 
 CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
+def delete_file_embeddings(collection, file_path: str) -> None:
+    """
+    Delete all embeddings for a specific file from ChromaDB.
+    
+    Args:
+        collection: ChromaDB collection
+        file_path (str): Path to the file whose embeddings should be deleted
+    """
+    # Get all documents where file_path matches
+    results = collection.get(
+        where={"file_path": file_path}
+    )
+    
+    if results and results['ids']:
+        # Delete all matching documents
+        collection.delete(
+            ids=results['ids']
+        )
+
 def modify_code_file(file_path, new_code, start_line=None, end_line=None):
     """
-    Modifies a code file. Automatically resolves relative paths to absolute paths
-    using CODE_REPO_PATH.
+    Modifies a code file and updates its embeddings in ChromaDB.
 
     Parameters:
         file_path (str): Path to the file to modify (relative or absolute)
@@ -33,7 +54,13 @@ def modify_code_file(file_path, new_code, start_line=None, end_line=None):
         if not os.path.isabs(file_path):
             file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip('/'))
 
-        # Read existing file content
+        # Initialize embedder
+        embedder = CodeEmbedder()
+        
+        # Delete existing embeddings for this file
+        delete_file_embeddings(embedder.collection, file_path)
+            
+        # Perform the file modification
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
             
@@ -57,12 +84,16 @@ def modify_code_file(file_path, new_code, start_line=None, end_line=None):
         # Write back to file
         with open(file_path, 'w', encoding='utf-8') as file:
             file.writelines(lines)
+        
+        _, chunks = process_file(file_path)
+        if chunks:
+            embedder.embed_chunks(chunks)
             
         # Read and return the updated content
         with open(file_path, 'r', encoding='utf-8') as file:
             updated_content = file.read()
             
-        return f"File modified successfully at: {file_path}", updated_content
+        return f"File modified and re-embedded successfully at: {file_path}\n", updated_content
         
     except FileNotFoundError:
         raise FileNotFoundError(f"File not found at path: {file_path}")
@@ -86,4 +117,3 @@ if __name__ == "__main__":
         
     except (FileNotFoundError, IOError, ValueError) as e:
         print(f"Error: {e}")
-

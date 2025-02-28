@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+from embedding.embedd import CodeEmbedder
+from embedding.summarizer import process_file
 
 load_dotenv()
 
@@ -7,8 +9,8 @@ CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
 def create_code_file(file_path, code):
     """
-    Creates a new file at the given file path. Automatically resolves relative paths
-    to absolute paths using CODE_REPO_PATH.
+    Creates a new file at the given file path and embeds it in ChromaDB.
+    Automatically resolves relative paths to absolute paths using CODE_REPO_PATH.
 
     Parameters:
         file_path (str): The path (relative or absolute) where the file should be created
@@ -26,14 +28,21 @@ def create_code_file(file_path, code):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    # Write the code to the file.
+    # Write the code to the file
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(code)
     
+    # Initialize embedder and embed the new file
+    embedder = CodeEmbedder()
+    _, chunks = process_file(file_path)
+    if chunks:
+        embedder.embed_chunks(chunks)
+    
+    # Read and return the file content
     with open(file_path, "r") as file:
         content = file.read()
 
-    return (f"File created at: {file_path}", content)
+    return (f"File created and embedded at: {file_path}\n", content)
 
 
 # Example usage:
