@@ -9,6 +9,7 @@ from typing import List, Dict
 from coderag.embedding.summarizer import process_directory
 import anthropic
 from dotenv import load_dotenv
+from rerankers import Reranker
 
 load_dotenv()
 
@@ -110,10 +111,27 @@ class CodeEmbedder:
         )
         
         return response.content[0].text
+    
+    def rerank_documents(self, query: str, docs: List[str]) -> List[int]:
+        """
+        Rerank documents based on relevance to the query.
+        
+        Args:
+            query (str): Search query
+            
+        Returns:
+            List[int]: List of reranked indices
+        """
+        ranker = Reranker("answerdotai/answerai-colbert-small-v1", model_type='colbert', verbose=0)
+        # Get the reranked results and convert to list
+        reranked = list(ranker.rank(query=query, docs=docs))
+        # Create a mapping of original positions to new positions
+        original_indices = list(range(len(docs)))
+        return [original_indices[i] for i in range(len(reranked))]
 
     def search(self, query: str, n_results: int = 7, use_hyde: bool = True) -> List[Dict]:
         """
-        Search for code chunks similar to query using HYDE technique.
+        Search for code chunks similar to query using HYDE technique and rerank results.
         
         Args:
             query (str): Search query
@@ -131,13 +149,30 @@ class CodeEmbedder:
             # Use original query directly
             query_embedding = self.model.encode(query).tolist()
         
+        # Get initial results from ChromaDB
         results = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=n_results
         )
-        return results
+        
+        # Extract documents for reranking
+        docs = results['documents'][0]  # Get the list of document summaries
+        
+        # Rerank the documents and get indices
+        reranked_indices = self.rerank_documents(query, docs)
+        
+        # Reorder the results based on reranking
+        reranked_results = {
+            'ids': [results['ids'][0][i] for i in reranked_indices],
+            'documents': [[results['documents'][0][i] for i in reranked_indices]],
+            'metadatas': [[results['metadatas'][0][i] for i in reranked_indices]],
+            'distances': [results['distances'][0][i] for i in reranked_indices]
+        }
+        
+        return reranked_results
 
 if __name__ == "__main__":
+    
     embedder = CodeEmbedder()
     # embedder.embed_directory("../sephora-tiktok-trends-main")
     
