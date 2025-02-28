@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styles from './UserAndLLmChats.module.css';
 import { GiArtificialHive } from "react-icons/gi";
-import CodeBlock from '../CodeBlock/CodeBlock';
+import CodeBlockEditor from '../CodeBlock/CodeBlock';
 import ResponseFormater from '../ResponseFormater/ResponseFormater';
+import { FaRegEdit } from "react-icons/fa";
+import { BsArrowsAngleExpand } from "react-icons/bs";
 
-const UserAndLLmChats = ({ messages, isLoading, onRecentQuestionClick, setOpenCanvas, isOpenCanvas, setCanvas}) => {
+
+
+const UserAndLLmChats = ({ messages, isLoading, onRecentQuestionClick, setOpenCanvas, isOpenCanvas, setCanvas , setCollapsed}) => {
     const chatEndRef = useRef(null);
     const [streamingMessages, setStreamingMessages] = useState([]);
     const [showInitialMessage, setShowInitialMessage] = useState(true);
@@ -89,27 +93,14 @@ const UserAndLLmChats = ({ messages, isLoading, onRecentQuestionClick, setOpenCa
                         <div className={styles.initialMessage}>
                             Welcome! 👋 How can I assist you today?
                         </div>
-                        <div className={styles.recentQuestionsBox}>
-                            <p className={styles.recentQuestionsTitle}>Recently Asked Questions:</p>
-                            <div className={styles.recentQuestions}>
-                                {recentQuestions.map((question, index) => (
-                                    <button
-                                        key={index}
-                                        className={styles.questionButton}
-                                        onClick={() => onRecentQuestionClick(question)}
-                                    >
-                                        {question}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        
                     </div>
                 )}
 
                 {messages.map((message) => {
                     const isStreamingMessage = streamingMessages.find(m => m.id === message.id);
                     const displayMessage = isStreamingMessage || message;
-                    const isStreaming = isStreamingMessage?.text?.length !== displayMessage.text.length;
+                   
 
                     return (
                         <div
@@ -127,22 +118,25 @@ const UserAndLLmChats = ({ messages, isLoading, onRecentQuestionClick, setOpenCa
                                             role={displayMessage.text}
                                         />
                                         {displayMessage.codeCanvas && !isOpenCanvas && (
-                                            <div className={styles.codeContainer}>
-                                                <CodeBlock
+
+                                            <div className={styles.codeContainer}
+                                            onClick={() =>{ handleCanvasOpen(displayMessage.codeCanvas)}}
+                                            >  
+                                               <span className={styles.menu}>
+                                                 <FaRegEdit/> 
+                                                 <BsArrowsAngleExpand/> 
+                                               </span>
+                                                <CodeBlockEditor
                                                     language={displayMessage.codeCanvas.language || 'python'}
                                                     value={displayMessage.codeCanvas.text}
                                                     highlightLine={''}
-                                                    editorColor={true}
+                                                    editorColor={false}
+                                                    
                                                 />
-                                                <button
-                                                    className={styles.openCanvasButton}
-                                                    onClick={() => handleCanvasOpen(displayMessage.codeCanvas)}
-                                                >
-                                                    Open Canvas
-                                                </button>
+                                                
                                             </div>
                                         )}
-                                        {isStreaming && <span className={styles.fastCursor}></span>}
+                        
                                     </div>
                                 </div>
                             ) : (

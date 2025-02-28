@@ -1,12 +1,14 @@
 import React from 'react';
-import { CopyBlock, dracula, github } from "react-code-blocks";
+import { CodeBlock , dracula, github } from "react-code-blocks";
 import styles from './CodeBlock.module.css';
 
-const CodeBlock = ({ language, value, isHighlighted, editorColor = false, isStreaming }) => {
+
+const CodeBlockEditor = ({ language, value, isHighlighted, editorColor = false, isStreaming }) => {
+
   return (
     <div className={`${styles.container} ${isHighlighted ? styles.highlighted : ''}`}>
       <div className={styles.codeWrapper}>
-        <CopyBlock
+        <CodeBlock
           language={language}
           text={value}
           showLineNumbers={true}
@@ -22,4 +24,4 @@ const CodeBlock = ({ language, value, isHighlighted, editorColor = false, isStre
   );
 };
 
-export default CodeBlock;
+export default CodeBlockEditor;

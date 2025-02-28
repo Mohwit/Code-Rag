@@ -128,12 +128,18 @@ def process_tool_call(tool_name, tool_input):
     return None
 
 tool_name = None 
-tool_result = None
+
+tool_result = []  # Convert to list if it's not already
+
 
 def chat(user_message):
 
     global tool_name
     global tool_result
+    # 🔹 Ensure tool_result is a list
+    if not isinstance(tool_result, list):
+        tool_result = []  # Reset as an empty list before new tool calls
+
 
 #    print(f"\n{'='*50}\nUser Message: {user_message}\n{'='*50}")
     messages = [
@@ -158,7 +164,7 @@ def chat(user_message):
             print(f"\nTool Used: {tool_name}")
             print(f"Tool Input:")
             print(json.dumps(tool_input, indent=2))
-            tool_result = process_tool_call(tool_name, tool_input)
+            tool_result.append(process_tool_call(tool_name, tool_input))
             print(f"\nTool Result:")
             print(json.dumps(tool_result, indent=2))
             messages.extend([
@@ -244,18 +250,22 @@ async def generate_events(user_message: str, session_id: str):
             conversation_histories[session_id].append({"role": "assistant", "content": final_response})
 
         if use_canvas:
-     
-            # Then, send the canvas update
-            yield f"data: {json.dumps({'type': 'canvas', 'content': {'name': 'none', 'text': tool_result}})}\n\n"
+            # Ensure tool_result is treated as a list
+            tool_results = tool_result if isinstance(tool_result, list) else [tool_result]
 
-            await asyncio.sleep(0.1) 
+            # Send canvas updates for each tool call
+            for result in tool_results:
+                yield f"data: {json.dumps({'type': 'canvas', 'content': {'name': 'none', 'text': result}})}\n\n"
+                await asyncio.sleep(5)  # Allow time for frontend to process
 
-            # # First, send the normal message to the chat
-            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"   
+            # After all canvas updates, send the final message to chat
+            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
 
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
 
+        tool_results = []
+        
     except Exception as e:
         print(f"Error occurred: {str(e)}")
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"

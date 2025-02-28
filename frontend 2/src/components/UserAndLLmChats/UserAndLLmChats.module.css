@@ -35,7 +35,8 @@
     gap: 15px;
     margin-top: 2rem;
     margin-bottom: 20px;
-    padding: 0rem 21%;
+    padding: 0rem 23%;
+    
 }
 
 .message {
@@ -47,6 +48,7 @@
 }
 
 .userMessage {
+    margin-top: 2rem;
     background-color: #e7e9e9a8;
     align-self: flex-end;
     padding: 0px 30px;
@@ -55,6 +57,7 @@
     text-align: left;
     word-wrap: break-word;
     border-radius: 23px;
+   /* margin-right: 1.5rem;*/
 }
 
 .aiMessage {
@@ -64,10 +67,18 @@
     color: #0D0D0D;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     word-wrap: break-word;
+    margin-left: 1.5rem;
 }
+.aiMessageContainer {
+    /* display: flex; */
+    /* flex-direction: column; */
+    /* gap: 10px; */
 
+    /* gap: 30px; */
+    /* justify-content:flex-start; */
+}
 .aiLogo {
-    font-size: 1.5rem;
+    font-size: 2rem;
     color: #4f0f83ee;
     background: #d7d7d7fb;
     border-radius: 50%;
@@ -233,18 +244,23 @@
 
 
 .codeContainer {
-    max-height: 10rem;
+    margin-top: 3rem;
+    max-height: 14rem;
+    width: 46rem;
     overflow: hidden;
-    background: rgba(9, 7, 31, 0.803);
     border-radius: 0.5rem;
     cursor: pointer;
     transition: all 0.5s ease;
-    padding: 0.5rem;
+    padding: 0.1rem;
     white-space: pre-wrap;
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.9rem;
     position: relative;
     color: white;
+    box-shadow:  0px 0px 10px rgba(85, 83, 83, 0.102);
+    border: 1px solid rgba(22, 11, 11, 0.212);
+    border-radius: 0.7rem;
+    cursor: pointer;
 }
 
 .codeContainer::after {
@@ -253,12 +269,25 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 100%;
-    background: linear-gradient(to bottom, rgba(22, 19, 19, 0.276) 0%, rgba(9, 9, 9, 0.8) 100%);
+    height: 25%;
+    background: linear-gradient(to top, rgba(32, 31, 31, 0.094), transparent);
+    backdrop-filter: blur(1.5px);
     pointer-events: none;
+    cursor: pointer;
 }
 
+.menu{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: black;
+    padding: 0.5rem 1rem;
+    font-weight: 900;
+    font-size: 1.2rem;
+}
+ 
 .openCanvasButton {
+    display:none;
     position: absolute;
     bottom: 1rem; 
     left: 50%;
@@ -267,7 +296,7 @@
     padding: 0.5rem 1rem;
     font-size: 1rem;
     border: 0.01rem  rgba(21, 57, 188, 0.516) solid;
-    border-radius: 0.5rem;
+    border-radius: 2rem;
     cursor: pointer;
     z-index: 2;
     transition: background-color 0.3s ease;
@@ -281,4 +310,4 @@
 
 
 
-
+ 

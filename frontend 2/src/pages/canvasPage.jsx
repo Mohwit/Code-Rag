@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import CodeBlock from '../components/CodeBlock/CodeBlock';
+import CodeBlockEditor from '../components/CodeBlock/CodeBlock';
 import styles from './CanvasPage.module.css';
 import { MdOutlineClose } from "react-icons/md";
 
@@ -8,8 +8,8 @@ const CanvasPage = ({ codeCanvas, setOpenCanvas }) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const streamInterval = useRef(null);
   
-  const TYPING_SPEED = 10;
-  const CHARS_PER_CHUNK = 3;
+  const TYPING_SPEED = 30;
+  const CHARS_PER_CHUNK = 5;
 
   useEffect(() => {
     if (codeCanvas?.text) {
@@ -44,7 +44,7 @@ const CanvasPage = ({ codeCanvas, setOpenCanvas }) => {
       </div>
 
       <div className={styles.codeBlock}>
-        <CodeBlock 
+        <CodeBlockEditor 
           language={codeCanvas?.language || 'python'} 
           value={streamingText}
           highlightLine={''}
