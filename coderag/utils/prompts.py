@@ -5,7 +5,7 @@ load_dotenv()
 
 CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
-print("CODE_REPO_PATH", CODE_REPO_PATH)
+# print("CODE_REPO_PATH", CODE_REPO_PATH)
   # Change this to your actual project path
 codebase_structure = parse_project(CODE_REPO_PATH)
 
