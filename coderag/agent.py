@@ -9,7 +9,7 @@ import os
 from dotenv import load_dotenv
 import asyncio
 
-from fastapi import FastAPI
+from fastapi import FastAPI,Request
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -253,13 +253,15 @@ async def generate_events(user_message: str, session_id: str):
             # Ensure tool_result is treated as a list
             tool_results = tool_result if isinstance(tool_result, list) else [tool_result]
 
+            # After all canvas updates, send the final message to chat
+            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
+
+
             # Send canvas updates for each tool call
             for result in tool_results:
                 yield f"data: {json.dumps({'type': 'canvas', 'content': {'name': 'none', 'text': result}})}\n\n"
                 await asyncio.sleep(5)  # Allow time for frontend to process
 
-            # After all canvas updates, send the final message to chat
-            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
 
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
@@ -276,11 +278,13 @@ async def root():
     return {"message": "API is running"}
 
 
-@app.post("/chat")
-async def chat_endpoint(request_data: ChatRequest):
+@app.get("/chat")
+async def chat_endpoint(request : Request):
     try:
+        message = request.query_params.get("message", "")
+        session_id = "3423424sdds"
         return StreamingResponse(
-            generate_events(request_data.message, request_data.session_id),  # Pass only 'message'
+            generate_events(message,session_id),  # Pass only 'message'
             media_type="text/event-stream",
             headers={
                 'Cache-Control': 'no-cache',
@@ -288,14 +292,12 @@ async def chat_endpoint(request_data: ChatRequest):
                 'X-Accel-Buffering': 'no'
             }
         )
-
     except Exception as e:
         print(f"Error in chat_endpoint: {str(e)}")
         return StreamingResponse(
             [f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"],
             media_type="text/event-stream"
         )
-
 
 if __name__ == "__main__":
     import uvicorn

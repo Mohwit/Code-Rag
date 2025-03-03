@@ -155,10 +155,10 @@ def process_directory(directory, indent=""):
 def parse_project(project_directory):
     """Main function to parse the project."""
     base_name = os.path.basename(project_directory)
-    print("base_name", base_name)
+    # print("base_name", base_name)
     output = [f"{base_name}/"]
     output.extend(process_directory(project_directory))
-    print("output", output, "\n")
+    # print("output", output, "\n")
     return "\n".join(output)
 
 if __name__ == "__main__":

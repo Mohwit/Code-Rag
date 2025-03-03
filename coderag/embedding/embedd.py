@@ -174,7 +174,7 @@ class CodeEmbedder:
 if __name__ == "__main__":
     
     embedder = CodeEmbedder()
-    # embedder.embed_directory("../sephora-tiktok-trends-main")
+    embedder.embed_directory("../sephora-tiktok-trends-main")
     
     # Test the search function
     results = embedder.search("Explain how comments are loaded from vector database and how is the chat response generated from them?")
