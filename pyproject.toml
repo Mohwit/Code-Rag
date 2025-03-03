@@ -10,4 +10,5 @@ dependencies = [
     "colbert-ai>=0.2.21",
     "rerankers>=0.8.0",
     "sentence-transformers>=3.4.1",
+    "turbopuffer>=0.1.32",
 ]

@@ -161,7 +161,7 @@ def chat(user_message, messages=None):
             ])
             response = client.messages.create(
                 system=system_prompt,
-                model="claude-3-haiku-20240307",
+                model="claude-3-5-sonnet-20240620",
                 temperature=0,
                 max_tokens=4096,
                 tools=tools,
