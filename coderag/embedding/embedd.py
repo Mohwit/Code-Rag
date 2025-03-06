@@ -18,7 +18,7 @@ TURBOPUFFER_API_KEY = os.getenv("TURBOPUFFER_API_KEY")
 tpuf.api_base_url = "https://gcp-us-central1.turbopuffer.com"
 
 class CodeEmbedder:
-    def __init__(self, collection_name: str = "coderag", 
+    def __init__(self, collection_name: str = "sephora-tiktok-trends", 
                  model_name: str = "all-MiniLM-L6-v2"):
         """Initialize TurboPuffer namespace and sentence transformer."""
         self.namespace = tpuf.Namespace(
@@ -179,26 +179,26 @@ class CodeEmbedder:
 if __name__ == "__main__":
     
     embedder = CodeEmbedder()
-    # embedder.embed_directory("../sephora-tiktok-trends-main")
+    embedder.embed_directory("../sephora-tiktok-trends-main")
     
     # Test the search function
-    results = embedder.search("Explain how comments are loaded from vector database and how is the chat response generated from them?")
+    # results = embedder.search("Explain how comments are loaded from vector database and how is the chat response generated from them?")
     
-    # Print results in a clean format
-    for i, (summary, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0]), 1):
-        print(f"\n=== Result {i} ===")
-        print(f"File: {metadata['file_path']}")
-        print(f"Type: {metadata['type']}")
-        print(f"Name: {metadata['name']}")
-        print("\nSummary:")
-        print(summary)
-        print("\nCode:")
-        print(metadata['code'])
-        print("\nDocstring:")
-        print(metadata['docstring'])
-        print("\nFunction Calls:")
-        print(metadata['function_calls'])
-        print("\nClass Instances:")
-        print(metadata['class_instances'])
-        print("=" * 50)
+    # # Print results in a clean format
+    # for i, (summary, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0]), 1):
+    #     print(f"\n=== Result {i} ===")
+    #     print(f"File: {metadata['file_path']}")
+    #     print(f"Type: {metadata['type']}")
+    #     print(f"Name: {metadata['name']}")
+    #     print("\nSummary:")
+    #     print(summary)
+    #     print("\nCode:")
+    #     print(metadata['code'])
+    #     print("\nDocstring:")
+    #     print(metadata['docstring'])
+    #     print("\nFunction Calls:")
+    #     print(metadata['function_calls'])
+    #     print("\nClass Instances:")
+    #     print(metadata['class_instances'])
+    #     print("=" * 50)
     

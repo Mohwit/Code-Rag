@@ -23,7 +23,7 @@ print("CODE_REPO_PATH", CODE_REPO_PATH)
 tools = [    
     {
         "name": "read_code_file",
-        "description": "Read complete file content or specific line ranges from a file",
+        "description": "Read and retrieve code content from a file. Can read either the entire file or a specific range of lines. Useful for inspecting existing code, understanding context, or verifying file contents. Returns the file content as a string.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -45,33 +45,25 @@ tools = [
     },
     {
         "name": "modify_code_file",
-        "description": "Modify a code file by replacing a range of lines with new code. When modifying existing code, start_line and end_line must be specified to indicate the exact lines to replace.",
+        "description": "Replace the entire content of a code file with new code. This tool handles both the file modification and ensuring the code search index stays current. Returns a success message and the updated content.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "file_path": {
                     "type": "string",
-                    "description": "Path to the file to modify"
+                    "description": "Path to the file to modify (relative or absolute)"
                 },
                 "new_code": {
                     "type": "string",
-                    "description": "New code to replace the specified line range"
-                },
-                "start_line": {
-                    "type": "integer",
-                    "description": "Starting line number for modification (1-based indexing). Must be provided when modifying existing code."
-                },
-                "end_line": {
-                    "type": "integer",
-                    "description": "Ending line number for modification (1-based indexing). Must be provided when modifying existing code."
+                    "description": "New code to replace the entire file content with"
                 }
             },
-            "required": ["file_path", "new_code", "start_line", "end_line"]
+            "required": ["file_path", "new_code"]
         }
     },
     {
         "name": "create_code_file",
-        "description": "Create a new file or overwrite an existing one with the provided code",
+        "description": "Create a new file or overwrite an existing one with provided code. This tool handles file creation, directory validation, and writes the specified content. Useful for generating new source files, configuration files, or documentation. Returns the path of the created file.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -89,7 +81,7 @@ tools = [
     },
     {
         "name": "search_similar_code",
-        "description": "Search for similar code chunks in the codebase",
+        "description": "Search for semantically similar code chunks across the entire codebase using embeddings. This tool helps find related implementations, patterns, or examples based on natural language queries. Useful for code reuse, understanding patterns, and finding similar implementations. Returns matching code snippets with their locations.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -127,9 +119,9 @@ def chat(user_message, messages=None):
     try:
         response = client.messages.create(
             system=system_prompt,
-            model="claude-3-5-sonnet-20240620",
+            model="claude-3-7-sonnet-20250219",
             temperature=0,
-            max_tokens=4096,
+            max_tokens=64000,
             tools=tools,
             messages=messages
         )
@@ -161,9 +153,9 @@ def chat(user_message, messages=None):
             ])
             response = client.messages.create(
                 system=system_prompt,
-                model="claude-3-5-sonnet-20240620",
+                model="claude-3-7-sonnet-20250219",
                 temperature=0,
-                max_tokens=4096,
+                max_tokens=64000,
                 tools=tools,
                 messages=messages
             )

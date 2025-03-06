@@ -12,42 +12,35 @@ load_dotenv()
 
 CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
-def delete_file_embeddings(collection, file_path: str) -> None:
+def delete_file_embeddings(namespace, file_path: str) -> None:
     """
-    Delete all embeddings for a specific file from ChromaDB.
+    Delete all embeddings for a specific file from TurboPuffer.
     
     Args:
-        collection: ChromaDB collection
+        namespace: TurboPuffer namespace
         file_path (str): Path to the file whose embeddings should be deleted
     """
-    # Get all documents where file_path matches
-    results = collection.get(
-        where={"file_path": file_path}
+    # Delete documents where file_path matches exactly
+    rows_affected = namespace.delete_by_filter(
+        ['file_path', 'Eq', file_path]
     )
     
-    if results and results['ids']:
-        # Delete all matching documents
-        collection.delete(
-            ids=results['ids']
-        )
+    print(f"Deleted {rows_affected} embeddings for file: {file_path}")
 
-def modify_code_file(file_path, new_code, start_line=None, end_line=None):
+def modify_code_file(file_path, new_code):
     """
-    Modifies a code file and updates its embeddings in ChromaDB.
+    Replaces the entire content of a code file and updates its embeddings in TurboPuffer.
 
     Parameters:
         file_path (str): Path to the file to modify (relative or absolute)
-        new_code (str): New code to insert or replace with
-        start_line (int, optional): Starting line number for modification (1-based indexing)
-        end_line (int, optional): Ending line number for modification (1-based indexing)
-                                If None, new_code will be inserted at start_line
+        new_code (str): New code to replace the entire file content with
     
     Returns:
         tuple: (str, str) - A success message and the updated file content
         
     Raises:
         FileNotFoundError: If the specified file doesn't exist
-        ValueError: If invalid line numbers are provided
+        IOError: If there's an error modifying the file
     """
     try:
         # Convert relative path to absolute path if needed
@@ -58,33 +51,13 @@ def modify_code_file(file_path, new_code, start_line=None, end_line=None):
         embedder = CodeEmbedder()
         
         # Delete existing embeddings for this file
-        delete_file_embeddings(embedder.collection, file_path)
+        delete_file_embeddings(embedder.namespace, file_path)
             
-        # Perform the file modification
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-            
-        if start_line and start_line < 1:
-            raise ValueError("start_line must be greater than 0")
-        if end_line and end_line > len(lines):
-            raise ValueError(f"end_line exceeds file length of {len(lines)} lines")
-        if start_line and end_line and start_line > end_line:
-            raise ValueError("start_line cannot be greater than end_line")
-            
-        # Convert to 0-based indexing
-        start = (start_line - 1) if start_line else 0
-        
-        # If end_line is provided, replace the range
-        # Otherwise insert at start_line
-        if end_line:
-            lines[start:end_line] = new_code.splitlines(True)
-        else:
-            lines.insert(start, new_code + '\n')
-            
-        # Write back to file
+        # Write new content to file
         with open(file_path, 'w', encoding='utf-8') as file:
-            file.writelines(lines)
+            file.write(new_code)
         
+        # Process and embed the updated file
         _, chunks = process_file(file_path)
         if chunks:
             embedder.embed_chunks(chunks)
@@ -104,17 +77,47 @@ def modify_code_file(file_path, new_code, start_line=None, end_line=None):
 if __name__ == "__main__":
     # Example usage
     try:
-        file_path = "example.py"
-        new_code = "def new_function():\n    print('New function added!')\n"
+        # Create a test file path - use a temporary file for testing
+        file_path = os.path.join(CODE_REPO_PATH, "example.py")
         
-        # Insert new code at line 5
-        result, content = modify_code_file(file_path, new_code, start_line=5)
+        # Sample code to write to the file
+        new_code = """
+def hello_world():
+    "
+    A simple function that prints a greeting message.
+    This is a test function to verify the modify_code_file functionality.
+    "
+    print("Hello, world! This file was modified by the modify_code_file function.")
+    
+    # Adding some unique markers for testing embedding
+    # TEST_MARKER: This is a test file for the modify_code_file function
+    # EMBEDDING_TEST: This text should be indexed in TurboPuffer
+    
+    return "Hello, world!"
+
+if __name__ == "__main__":
+    result = hello_world()
+    print(f"Function returned: {result}")
+"""
+        
+        # First, create the file if it doesn't exist
+        if not os.path.exists(file_path):
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write("# Initial content")
+            print(f"Created test file at: {file_path}")
+        
+        # Now test the modify_code_file function
+        print(f"Testing modify_code_file on: {file_path}")
+        result, content = modify_code_file(file_path, new_code)
+        
         print(result)
+        print("\nUpdated file content:")
+        print("-" * 40)
+        print(content)
+        print("-" * 40)
         
-        # Replace lines 5-7 with new code
-        result, content = modify_code_file(file_path, new_code, start_line=5, end_line=7)
-        print(result)
+        print("\nVerification complete. You can check the file and TurboPuffer embeddings.")
         
-    except (FileNotFoundError, IOError, ValueError) as e:
+    except (FileNotFoundError, IOError) as e:
         print(f"Error: {e}")
 
