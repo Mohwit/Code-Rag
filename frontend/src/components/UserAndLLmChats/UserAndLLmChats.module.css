@@ -35,9 +35,9 @@
     gap: 15px;
     margin-top: 2rem;
     margin-bottom: 20px;
-    padding: 0rem 23%;
-    
+    padding: 0rem 19%;
 }
+
 
 .message {
     border-radius: 8px;
@@ -69,16 +69,26 @@
     word-wrap: break-word;
     margin-left: 1.5rem;
 }
-.aiMessageContainer {
-    /* display: flex; */
-    /* flex-direction: column; */
-    /* gap: 10px; */
 
-    /* gap: 30px; */
-    /* justify-content:flex-start; */
+.aiLogoAndThinking{
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+.thinking{
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 13px;
+    background: #e8eaf7;
+    padding: 0rem 0.7rem;
+    border-radius: 0.5rem;
+    /* border: inset 1px solid rgba(0, 0, 0, 0.092); */
+    display: inline;
 }
 .aiLogo {
-    font-size: 2rem;
+    font-size: 1.2rem;
     color: #4f0f83ee;
     background: #d7d7d7fb;
     border-radius: 50%;
@@ -178,7 +188,7 @@
     height: 13px;
     border-radius: 50%;
     background-color: #000000bc;
-    margin-left: 5px;
+    margin-left: 45px;
     animation: cursorBlink 0.9s infinite;
      z-index: 100000;
 }
@@ -246,7 +256,7 @@
 .codeContainer {
     margin-top: 3rem;
     max-height: 14rem;
-    width: 46rem;
+    max-width: 46rem;
     overflow: hidden;
     border-radius: 0.5rem;
     cursor: pointer;
