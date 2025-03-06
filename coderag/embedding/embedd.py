@@ -11,6 +11,13 @@ import anthropic
 from dotenv import load_dotenv
 from rerankers import Reranker
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+
 load_dotenv()
 
 class CodeEmbedder:
@@ -174,7 +181,7 @@ class CodeEmbedder:
 if __name__ == "__main__":
     
     embedder = CodeEmbedder()
-    embedder.embed_directory("../sephora-tiktok-trends-main")
+    embedder.embed_directory(CODE_REPO_PATH)
     
     # Test the search function
     results = embedder.search("Explain how comments are loaded from vector database and how is the chat response generated from them?")

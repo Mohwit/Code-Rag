@@ -63,7 +63,7 @@ def read_code_file(file_path, start_line=None, end_line=None):
 if __name__ == "__main__":
     # Example usage
     try:
-        file_path = "../sephora-tiktok-trends-main/backend/invertedIndexData/InvertedIndex.py"
+        file_path = CODE_REPO_PATH + str('/da63a6cb-4ee8-4263-a659-148f3ed8a4eb')
         # Read entire file
         content = read_code_file(file_path)
         print("Complete file content:")
