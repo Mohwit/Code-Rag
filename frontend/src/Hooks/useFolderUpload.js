@@ -82,7 +82,7 @@ const useFolderUpload = () => {
       });
 
       // Upload files to the server
-      let response = await fetch(uploadEndpoint + '/upload-folder', {
+      let response = await fetch(uploadEndpoint+'/upload-folder', {
         method: 'POST',
         body: formData,
         // Use XHR for progress tracking

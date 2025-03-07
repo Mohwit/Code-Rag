@@ -14,7 +14,7 @@ import uuid
 from typing import List
 
 from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import asyncio
@@ -31,11 +31,11 @@ load_dotenv()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 # Create a directory to store uploaded files
-UPLOAD_DIR = os.path.join(os.getcwd(), "..", "uploaded_files")
+UPLOAD_DIR = os.path.join(os.getcwd(), "uploaded_files")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Use the uploaded folder path if available, otherwise use the environment variable
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH", UPLOAD_DIR)
+CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 print("CODE_REPO_PATH", CODE_REPO_PATH)
 
 # Store session to folder mapping
@@ -294,6 +294,33 @@ async def generate_events(user_message: str, session_id: str):
 async def root():
     return {"message": "API is running"}
 
+@app.get("/file")
+#async def fetch_file(session_id: str, file_path: str):
+async def fetch_file(request: Request, path: str):
+
+    """
+    Fetch a specific file from the uploaded folder structure.
+
+    Args:
+        session_id (str): The session ID where the files were uploaded.
+        file_path (str): The relative path of the requested file.
+
+    Returns:
+        FileResponse: Serves the requested file.
+    """
+
+    print(path)
+    # Construct full file path
+    full_path = os.path.join(UPLOAD_DIR, '3423424sdds' ,  path)
+    print(full_path)
+
+    # Validate file existence
+    if not os.path.isfile(full_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(full_path, filename=os.path.basename(full_path))
+
+
 @app.post("/upload-folder")
 async def upload_folder(files: List[UploadFile] = File(...), session_id: str = Form(None)):
     """
@@ -305,7 +332,7 @@ async def upload_folder(files: List[UploadFile] = File(...), session_id: str = F
     
     # Generate a new session_id if none provided
     if not session_id:
-        session_id = str(uuid.uuid4())
+        session_id = "3423424sdds"
     
     # Create a session directory
     session_dir = os.path.join(UPLOAD_DIR, session_id)
@@ -382,3 +409,4 @@ if __name__ == "__main__":
 ####################################################################################################
 if __name__ == "__main__":
     pass
+    # modify_code_file("../local-test-files/pose_classification_model_train.py")
