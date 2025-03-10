@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 import turbopuffer as tpuf
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict
-from coderag.embedding.summarizer import process_directory
+from coderag.embedding.summarizer import process_directory, _get_language_from_file_path
 import anthropic
 from dotenv import load_dotenv
 from rerankers import Reranker
@@ -32,9 +32,10 @@ class CodeEmbedder:
         Process a directory and embed all code chunks into TurboPuffer.
         
         Args:
-            directory_path (str): Path to directory containing Python files
+            directory_path (str): Path to directory containing code files
+                                  (Python, JavaScript, TypeScript, Java)
         """
-        # Process all Python files in directory
+        # Process all supported code files in directory
         file_chunks = process_directory(directory_path)
         
         for file_path, chunks in file_chunks.items():
@@ -49,6 +50,10 @@ class CodeEmbedder:
             print(f"Type: {chunk['type']}")
             print(f"Name: {chunk['name']}")
             print("Summary:", chunk.get("summary", "NO SUMMARY FOUND"))
+            
+            # Get language from file path
+            language = _get_language_from_file_path(chunk['file_path'])
+            print(f"Language: {language}")
             print("=" * 50)
             
             # Create shorter document ID using just filename instead of full path
@@ -67,7 +72,8 @@ class CodeEmbedder:
                 "file_path": [chunk["file_path"] or ""],
                 "docstring": [chunk["docstring"] or ""],
                 "code": [chunk["code"] or ""],
-                "summary": [chunk.get("summary", "")]
+                "summary": [chunk.get("summary", "")],
+                "language": [language or ""]  # Add language to metadata
             }
             
             # Add additional metadata if it exists
@@ -92,6 +98,10 @@ class CodeEmbedder:
                 distance_metric='cosine_distance',
                 schema={
                     "summary": {
+                        "type": "string",
+                        "full_text_search": True,
+                    },
+                    "language": {
                         "type": "string",
                         "full_text_search": True,
                     }
@@ -140,13 +150,29 @@ class CodeEmbedder:
         original_indices = list(range(len(docs)))
         return [original_indices[i] for i in range(len(reranked))]
 
-    def search(self, query: str, n_results: int = 7, use_hyde: bool = True) -> Dict:
-        """Search for code chunks using TurboPuffer."""
+    def search(self, query: str, n_results: int = 7, use_hyde: bool = True, language_filter: str = None) -> Dict:
+        """
+        Search for code chunks using TurboPuffer.
+        
+        Args:
+            query (str): Search query
+            n_results (int): Number of results to return
+            use_hyde (bool): Whether to use hypothetical document embedding
+            language_filter (str): Filter results by programming language (python, javascript, typescript, java)
+            
+        Returns:
+            Dict: Search results
+        """
         if use_hyde:
             hypothetical_answer = self.generate_hypothetical_answer(query)
             query_embedding = self.model.encode(hypothetical_answer).tolist()
         else:
             query_embedding = self.model.encode(query).tolist()
+        
+        # Prepare filter if language is specified
+        filter_expr = None
+        if language_filter:
+            filter_expr = f"language == '{language_filter.lower()}'"
         
         # Query TurboPuffer
         results = self.namespace.query(
@@ -154,10 +180,9 @@ class CodeEmbedder:
             top_k=n_results,
             distance_metric="cosine_distance",
             include_attributes=True,
-            include_vectors=False
+            include_vectors=False,
+            filter=filter_expr
         )
-        
-        # print(results)
         
         # Extract data from results
         docs = [result.attributes.get("summary", [""])[0] for result in results]
@@ -176,29 +201,31 @@ class CodeEmbedder:
             'distances': [distances[i] for i in reranked_indices]
         }
 
+
 if __name__ == "__main__":
     
     embedder = CodeEmbedder()
-    embedder.embed_directory("../sephora-tiktok-trends-main")
+    # embedder.embed_directory("../sephora-tiktok-trends-main")
     
     # Test the search function
-    # results = embedder.search("Explain how comments are loaded from vector database and how is the chat response generated from them?")
+    results = embedder.search("Explain how comments are loaded from vector database and how is the chat response generated from them?")
     
     # # Print results in a clean format
-    # for i, (summary, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0]), 1):
-    #     print(f"\n=== Result {i} ===")
-    #     print(f"File: {metadata['file_path']}")
-    #     print(f"Type: {metadata['type']}")
-    #     print(f"Name: {metadata['name']}")
-    #     print("\nSummary:")
-    #     print(summary)
-    #     print("\nCode:")
-    #     print(metadata['code'])
-    #     print("\nDocstring:")
-    #     print(metadata['docstring'])
-    #     print("\nFunction Calls:")
-    #     print(metadata['function_calls'])
-    #     print("\nClass Instances:")
-    #     print(metadata['class_instances'])
-    #     print("=" * 50)
+    for i, (summary, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0]), 1):
+        print(f"\n=== Result {i} ===")
+        print(f"File: {metadata['file_path']}")
+        print(f"Type: {metadata['type']}")
+        print(f"Name: {metadata['name']}")
+        print(f"Language: {metadata['language']}")
+        print("\nSummary:")
+        print(summary)
+        print("\nCode:")
+        print(metadata['code'])
+        print("\nDocstring:")
+        print(metadata['docstring'])
+        print("\nFunction Calls:")
+        print(metadata.get('function_calls', ''))
+        print("\nClass Instances:")
+        print(metadata.get('class_instances', ''))
+        print("=" * 50)
     
