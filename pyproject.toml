@@ -10,5 +10,8 @@ dependencies = [
     "colbert-ai>=0.2.21",
     "rerankers>=0.8.0",
     "sentence-transformers>=3.4.1",
+    "tree-sitter-java>=0.23.5",
+    "tree-sitter-javascript>=0.23.1",
+    "tree-sitter-typescript>=0.23.2",
     "turbopuffer>=0.1.32",
 ]
