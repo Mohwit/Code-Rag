@@ -9,14 +9,93 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
 
 from utils.parser import (
-    PY_LANGUAGE,
-    parser,
     get_node_text,
-    get_docstring
+    get_docstring,
+    LANGUAGE_CONFIGS,
+    PARSERS
 )
 from embedding.utility import generate_code_summary
 
-def _process_import_node(node, code_bytes, file_path):
+# Define language-specific node types
+LANGUAGE_NODE_TYPES = {
+    'python': {
+        'class': 'class_definition',
+        'function': 'function_definition',
+        'import': ['import_statement', 'import_from_statement'],
+        'control_flow': [
+            "if_statement",
+            "for_statement",
+            "while_statement",
+            "try_statement",
+            "with_statement"
+        ],
+        'assignment': [
+            "assignment",
+            "expression_statement",
+            "augmented_assignment"
+        ]
+    },
+    'javascript': {
+        'class': 'class_declaration',
+        'function': ['function_declaration', 'method_definition', 'arrow_function'],
+        'import': ['import_statement', 'import_specifier'],
+        'control_flow': [
+            "if_statement",
+            "for_statement",
+            "while_statement",
+            "try_statement",
+            "with_statement"
+        ],
+        'assignment': [
+            "assignment_expression",
+            "variable_declaration",
+            "expression_statement"
+        ]
+    },
+    'typescript': {
+        'class': 'class_declaration',
+        'function': ['function_declaration', 'method_definition', 'arrow_function'],
+        'import': ['import_statement', 'import_specifier'],
+        'control_flow': [
+            "if_statement",
+            "for_statement",
+            "while_statement",
+            "try_statement",
+            "with_statement"
+        ],
+        'assignment': [
+            "assignment_expression",
+            "variable_declaration",
+            "expression_statement"
+        ]
+    },
+    'java': {
+        'class': 'class_declaration',
+        'function': 'method_declaration',
+        'import': ['import_declaration'],
+        'control_flow': [
+            "if_statement",
+            "for_statement",
+            "while_statement",
+            "try_statement"
+        ],
+        'assignment': [
+            "assignment_expression",
+            "variable_declaration",
+            "expression_statement"
+        ]
+    }
+}
+
+def _get_language_from_file_path(file_path):
+    """Determine the language based on file extension."""
+    file_ext = os.path.splitext(file_path)[1].lower()
+    for lang, config in LANGUAGE_CONFIGS.items():
+        if file_ext in config['extensions']:
+            return lang
+    return None
+
+def _process_import_node(node, code_bytes, file_path, language):
     """Process an import statement and create a chunk."""
     import_code = get_node_text(node, code_bytes)
     if import_code.strip():
@@ -44,15 +123,16 @@ def _process_standalone_code(nodes, code_bytes, file_path, start_byte, end_byte)
         }
     return None
 
-def _process_import_nodes(nodes, code_bytes, file_path, start_idx, total_nodes):
+def _process_import_nodes(nodes, code_bytes, file_path, start_idx, total_nodes, language):
     """Process consecutive import statements and create a single chunk."""
     import_codes = []
     end_idx = start_idx
+    import_types = LANGUAGE_NODE_TYPES[language]['import']
     
     # Collect consecutive import statements
     while end_idx < total_nodes:
         node = nodes[end_idx]
-        if node.type not in ["import_statement", "import_from_statement"]:
+        if node.type not in import_types:
             break
         import_codes.append(get_node_text(node, code_bytes))
         end_idx += 1
@@ -69,25 +149,15 @@ def _process_import_nodes(nodes, code_bytes, file_path, start_idx, total_nodes):
         }, end_idx
     return None, start_idx
 
-def _is_control_flow_node(node):
+def _is_control_flow_node(node, language):
     """Check if node is a control flow statement."""
-    return node.type in [
-        "if_statement",
-        "for_statement",
-        "while_statement",
-        "try_statement",
-        "with_statement"
-    ]
+    return node.type in LANGUAGE_NODE_TYPES[language]['control_flow']
 
-def _is_assignment_or_expr(node):
+def _is_assignment_or_expr(node, language):
     """Check if node is an assignment or expression."""
-    return node.type in [
-        "assignment",
-        "expression_statement",
-        "augmented_assignment"
-    ]
+    return node.type in LANGUAGE_NODE_TYPES[language]['assignment']
 
-def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes):
+def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes, language):
     """Process a logical block of related statements."""
     block_codes = []
     end_idx = start_idx
@@ -100,12 +170,16 @@ def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes)
         node = nodes[end_idx]
         
         # Track function calls and class instantiations
-        if node.type == "call":
-            function_name = get_node_text(node.child_by_field_name("function"), code_bytes)
-            function_calls.add(function_name)
-        elif node.type == "class_definition":
-            class_name = get_node_text(node.child_by_field_name("name"), code_bytes)
-            class_instances.add(class_name)
+        if node.type == "call" or node.type == "call_expression":
+            function_node = node.child_by_field_name("function")
+            if function_node:
+                function_name = get_node_text(function_node, code_bytes)
+                function_calls.add(function_name)
+        elif node.type == LANGUAGE_NODE_TYPES[language]['class']:
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                class_name = get_node_text(name_node, code_bytes)
+                class_instances.add(class_name)
         
         # Skip if this is part of a previously processed block
         if end_idx > start_idx and node.start_byte < nodes[start_idx].end_byte:
@@ -113,7 +187,7 @@ def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes)
             continue
             
         # Start a new context if we encounter a control flow statement
-        if _is_control_flow_node(node):
+        if _is_control_flow_node(node, language):
             if current_context is None:
                 current_context = node.type
                 block_codes.append(get_node_text(node, code_bytes))
@@ -123,7 +197,7 @@ def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes)
                 break
         
         # For assignment/expression statements
-        elif _is_assignment_or_expr(node):
+        elif _is_assignment_or_expr(node, language):
             if current_context is None:
                 # Group related assignments/expressions
                 if block_codes and len(block_codes) < 5:  # Adjust this threshold as needed
@@ -178,14 +252,23 @@ def _process_logical_block(nodes, code_bytes, file_path, start_idx, total_nodes)
 
 def chunk_code(file_path):
     """
-    Chunks a Python file into logical blocks of code.
+    Chunks a code file into logical blocks of code.
+    Supports Python, JavaScript, TypeScript, and Java.
     """
     chunks = []
     
     try:
+        language = _get_language_from_file_path(file_path)
+        if not language:
+            print(f"Unsupported file type: {file_path}")
+            return []
+            
         with open(file_path, 'r', encoding='utf-8') as file:
             code_str = file.read()
         code_bytes = bytes(code_str, "utf8")
+        
+        # Get the appropriate parser for the language
+        parser = PARSERS[language]
         tree = parser.parse(code_bytes)
         
         last_end = 0
@@ -197,29 +280,38 @@ def chunk_code(file_path):
             node = nodes[i]
             
             # Process imports
-            if node.type in ["import_statement", "import_from_statement"]:
-                import_chunk, new_idx = _process_import_nodes(nodes, code_bytes, file_path, i, total_nodes)
+            import_types = LANGUAGE_NODE_TYPES[language]['import']
+            if node.type in import_types:
+                import_chunk, new_idx = _process_import_nodes(nodes, code_bytes, file_path, i, total_nodes, language)
                 if import_chunk:
                     chunks.append(import_chunk)
                     last_end = nodes[new_idx - 1].end_byte
                     i = new_idx
                     continue
             
-            # Process classes and functions
-            elif node.type == "class_definition":
-                class_chunk = _process_class(node, code_bytes, file_path)
+            # Process classes
+            if node.type == LANGUAGE_NODE_TYPES[language]['class']:
+                class_chunk = _process_class(node, code_bytes, file_path, language)
                 if class_chunk:
                     chunks.append(class_chunk)
                     last_end = node.end_byte
-            elif node.type == "function_definition":
-                function_chunk = _process_function(node, code_bytes, file_path)
+            
+            # Process functions
+            elif isinstance(LANGUAGE_NODE_TYPES[language]['function'], list):
+                if node.type in LANGUAGE_NODE_TYPES[language]['function']:
+                    function_chunk = _process_function(node, code_bytes, file_path, language)
+                    if function_chunk:
+                        chunks.append(function_chunk)
+                        last_end = node.end_byte
+            elif node.type == LANGUAGE_NODE_TYPES[language]['function']:
+                function_chunk = _process_function(node, code_bytes, file_path, language)
                 if function_chunk:
                     chunks.append(function_chunk)
                     last_end = node.end_byte
             
             # Process other code blocks
             else:
-                logical_chunk, new_idx = _process_logical_block(nodes, code_bytes, file_path, i, total_nodes)
+                logical_chunk, new_idx = _process_logical_block(nodes, code_bytes, file_path, i, total_nodes, language)
                 if logical_chunk:
                     chunks.append(logical_chunk)
                     last_end = nodes[new_idx - 1].end_byte
@@ -233,7 +325,7 @@ def chunk_code(file_path):
         
     return chunks
 
-def _process_class(node, code_bytes, file_path):
+def _process_class(node, code_bytes, file_path, language):
     """Process a class node and create a chunk with summary."""
     name_node = node.child_by_field_name("name")
     if not name_node:
@@ -255,12 +347,16 @@ def _process_class(node, code_bytes, file_path):
     class_instances = set()
     
     def traverse_node(node):
-        if node.type == "call":
-            function_name = get_node_text(node.child_by_field_name("function"), code_bytes)
-            function_calls.add(function_name)
-        elif node.type == "class_definition":
-            class_name = get_node_text(node.child_by_field_name("name"), code_bytes)
-            class_instances.add(class_name)
+        if node.type in ["call", "call_expression"]:
+            function_node = node.child_by_field_name("function")
+            if function_node:
+                function_name = get_node_text(function_node, code_bytes)
+                function_calls.add(function_name)
+        elif node.type == LANGUAGE_NODE_TYPES[language]['class']:
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                class_name = get_node_text(name_node, code_bytes)
+                class_instances.add(class_name)
         for child in node.children:
             traverse_node(child)
     
@@ -284,7 +380,7 @@ def _process_class(node, code_bytes, file_path):
         }
     }
 
-def _process_function(node, code_bytes, file_path):
+def _process_function(node, code_bytes, file_path, language):
     """Process a function node and create a chunk with summary."""
     name_node = node.child_by_field_name("name")
     if not name_node:
@@ -297,13 +393,25 @@ def _process_function(node, code_bytes, file_path):
     body_node = node.child_by_field_name("body")
     docstring = get_docstring(body_node, code_bytes) if body_node else ""
     
-    # Get parameters
+    # Get parameters based on language
     params = []
     parameters_node = node.child_by_field_name("parameters")
+    
     if parameters_node:
-        for param in parameters_node.children:
-            if param.type == "identifier":
-                params.append(get_node_text(param, code_bytes))
+        if language == 'python':
+            for param in parameters_node.children:
+                if param.type == "identifier":
+                    params.append(get_node_text(param, code_bytes))
+        elif language == 'java':
+            for param in parameters_node.children:
+                if param.type == "formal_parameter":
+                    param_name = param.child_by_field_name("name")
+                    if param_name:
+                        params.append(get_node_text(param_name, code_bytes))
+        elif language in ['javascript', 'typescript']:
+            for param in parameters_node.children:
+                if param.type == "identifier" or param.type == "formal_parameter":
+                    params.append(get_node_text(param, code_bytes))
     
     # Get line numbers
     start_line = node.start_point[0] + 1
@@ -356,30 +464,37 @@ def process_file(file_path):
 
 def process_directory(directory_path, num_processes=None):
     """
-    Process all Python files in the given directory and its subdirectories in parallel.
+    Process all supported code files in the given directory and its subdirectories in parallel.
     
     Args:
-        directory_path (str): Path to the directory containing Python files
+        directory_path (str): Path to the directory containing code files
         num_processes (int, optional): Number of processes to use. Defaults to CPU count.
     
     Returns:
         dict: Dictionary mapping file paths to their chunks
     """
-    # Get all Python files in the directory and subdirectories
-    py_files = []
+    # Get all supported files in the directory and subdirectories
+    supported_files = []
+    supported_extensions = []
+    
+    # Collect all supported file extensions from language configs
+    for lang, config in LANGUAGE_CONFIGS.items():
+        supported_extensions.extend(config['extensions'])
+    
     for root, _, files in os.walk(directory_path):
         for file in files:
-            if file.endswith('.py'):
-                py_files.append(os.path.join(root, file))
+            file_ext = os.path.splitext(file)[1].lower()
+            if file_ext in supported_extensions:
+                supported_files.append(os.path.join(root, file))
     
-    if not py_files:
-        print(f"No Python files found in {directory_path}")
+    if not supported_files:
+        print(f"No supported code files found in {directory_path}")
         return {}
     
     # Create a process pool
     with Pool(processes=num_processes) as pool:
         # Process all files in parallel
-        results = pool.map(process_file, py_files)
+        results = pool.map(process_file, supported_files)
     
     # Convert results to dictionary
     return dict(results)
@@ -393,7 +508,8 @@ if __name__ == "__main__":
     
     # Print results for each file
     for file_path, chunks in results.items():
-        print(f"\nFile: {file_path}")
+        language = _get_language_from_file_path(file_path)
+        print(f"\nFile: {file_path} (Language: {language})")
         print("="*50)
         for chunk in chunks:
             print(f"\nType: {chunk['type']}")

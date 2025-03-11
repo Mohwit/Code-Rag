@@ -3,54 +3,46 @@ import sys
 # Add the project root directory to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-import chromadb
+import turbopuffer as tpuf
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict
-from coderag.embedding.summarizer import process_directory
+from coderag.embedding.summarizer import process_directory, _get_language_from_file_path
 import anthropic
 from dotenv import load_dotenv
 from rerankers import Reranker
 
-import os
-from dotenv import load_dotenv
-
 load_dotenv()
 
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
-
-load_dotenv()
+# Get TurboPuffer API key and set base URL
+TURBOPUFFER_API_KEY = os.getenv("TURBOPUFFER_API_KEY")
+tpuf.api_base_url = "https://gcp-us-central1.turbopuffer.com"
 
 class CodeEmbedder:
-    def __init__(self, collection_name: str = "code_chunks", persist_directory: str = "../chroma_db", 
+    def __init__(self, collection_name: str = "sephora-tiktok-trends", 
                  model_name: str = "all-MiniLM-L6-v2"):
-        """Initialize ChromaDB client, collection, and sentence transformer."""
-        self.client = chromadb.PersistentClient(path=persist_directory)
-        self.collection = self.client.get_or_create_collection(
+        """Initialize TurboPuffer namespace and sentence transformer."""
+        self.namespace = tpuf.Namespace(
             name=collection_name,
-            embedding_function=None  # We'll handle embeddings ourselves
+            api_key=TURBOPUFFER_API_KEY
         )
         self.model = SentenceTransformer(model_name)
 
     def embed_directory(self, directory_path: str) -> None:
         """
-        Process a directory and embed all code chunks into ChromaDB.
+        Process a directory and embed all code chunks into TurboPuffer.
         
         Args:
-            directory_path (str): Path to directory containing Python files
+            directory_path (str): Path to directory containing code files
+                                  (Python, JavaScript, TypeScript, Java)
         """
-        # Process all Python files in directory
+        # Process all supported code files in directory
         file_chunks = process_directory(directory_path)
         
         for file_path, chunks in file_chunks.items():
             self.embed_chunks(chunks)
             
     def embed_chunks(self, chunks: List[Dict]) -> None:
-        """
-        Embed summaries of code chunks into ChromaDB, storing the actual code as metadata.
-        
-        Args:
-            chunks (List[Dict]): List of code chunk dictionaries containing summaries
-        """
+        """Embed summaries of code chunks into TurboPuffer."""
         for chunk in chunks:
             # Debug print to verify summaries
             print("\n=== Embedding New Chunk ===")
@@ -58,42 +50,64 @@ class CodeEmbedder:
             print(f"Type: {chunk['type']}")
             print(f"Name: {chunk['name']}")
             print("Summary:", chunk.get("summary", "NO SUMMARY FOUND"))
+            
+            # Get language from file path
+            language = _get_language_from_file_path(chunk['file_path'])
+            print(f"Language: {language}")
             print("=" * 50)
             
-            # Create document ID from file path and chunk name
-            doc_id = f"{chunk['file_path']}_{chunk['type']}_{chunk['name']}"
+            # Create shorter document ID using just filename instead of full path
+            filename = os.path.basename(chunk['file_path'])
+            doc_id = f"{filename}_{chunk['type']}_{chunk['name']}"
             
-            # Prepare metadata, converting None to empty string
+            # If ID is still too long, hash it
+            if len(doc_id.encode('utf-8')) >= 64:
+                import hashlib
+                doc_id = hashlib.md5(doc_id.encode('utf-8')).hexdigest()
+            
+            # Prepare metadata - wrap each value in a list
             metadata = {
-                "type": chunk["type"] or "",
-                "name": chunk["name"] or "",
-                "file_path": chunk["file_path"] or "",
-                "docstring": chunk["docstring"] or "",
-                "code": chunk["code"] or ""  # Store the actual code as metadata
+                "type": [chunk["type"] or ""],
+                "name": [chunk["name"] or ""],
+                "file_path": [chunk["file_path"] or ""],
+                "docstring": [chunk["docstring"] or ""],
+                "code": [chunk["code"] or ""],
+                "summary": [chunk.get("summary", "")],
+                "language": [language or ""]  # Add language to metadata
             }
             
             # Add additional metadata if it exists
             if "metadata" in chunk:
-                processed_metadata = {k: ','.join(v) if isinstance(v, list) else (str(v) if v is not None else "")
+                processed_metadata = {k: [','.join(v) if isinstance(v, list) else (str(v) if v is not None else "")]
                                     for k, v in chunk["metadata"].items()}
                 metadata.update(processed_metadata)
             
             # Add parameters if it's a function
             if chunk["type"] == "function":
-                metadata["parameters"] = ','.join(chunk["parameters"]) if chunk.get("parameters") else ""
+                metadata["parameters"] = [','.join(chunk["parameters"]) if chunk.get("parameters") else ""]
             
-            # Generate embedding for the summary instead of code
-            summary = chunk.get("summary", "")  # Get the summary, default to empty string if not present
+            # Generate embedding for the summary
+            summary = chunk.get("summary", "")
             embedding = self.model.encode(summary).tolist()
             
-            # Add to ChromaDB collection with summary as document
-            self.collection.add(
-                documents=[summary],
-                embeddings=[embedding],
-                metadatas=[metadata],
-                ids=[doc_id]
+            # Individual upsert to TurboPuffer
+            self.namespace.upsert(
+                ids=[doc_id],
+                vectors=[embedding],
+                attributes=metadata,
+                distance_metric='cosine_distance',
+                schema={
+                    "summary": {
+                        "type": "string",
+                        "full_text_search": True,
+                    },
+                    "language": {
+                        "type": "string",
+                        "full_text_search": True,
+                    }
+                }
             )
-            
+
     def generate_hypothetical_answer(self, query: str) -> str:
         """
         Generate a hypothetical code summary that would answer the query.
@@ -136,62 +150,73 @@ class CodeEmbedder:
         original_indices = list(range(len(docs)))
         return [original_indices[i] for i in range(len(reranked))]
 
-    def search(self, query: str, n_results: int = 7, use_hyde: bool = True) -> List[Dict]:
+    def search(self, query: str, n_results: int = 7, use_hyde: bool = True, language_filter: str = None) -> Dict:
         """
-        Search for code chunks similar to query using HYDE technique and rerank results.
+        Search for code chunks using TurboPuffer.
         
         Args:
             query (str): Search query
             n_results (int): Number of results to return
-            use_hyde (bool): Whether to use HYDE technique
+            use_hyde (bool): Whether to use hypothetical document embedding
+            language_filter (str): Filter results by programming language (python, javascript, typescript, java)
             
         Returns:
-            List[Dict]: List of matching summaries with metadata (including code)
+            Dict: Search results
         """
         if use_hyde:
-            # Generate hypothetical answer and use it for embedding
             hypothetical_answer = self.generate_hypothetical_answer(query)
             query_embedding = self.model.encode(hypothetical_answer).tolist()
         else:
-            # Use original query directly
             query_embedding = self.model.encode(query).tolist()
         
-        # Get initial results from ChromaDB
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=n_results
+        # Prepare filter if language is specified
+        filter_expr = None
+        if language_filter:
+            filter_expr = f"language == '{language_filter.lower()}'"
+        
+        # Query TurboPuffer
+        results = self.namespace.query(
+            vector=query_embedding,
+            top_k=n_results,
+            distance_metric="cosine_distance",
+            include_attributes=True,
+            include_vectors=False,
+            filter=filter_expr
         )
         
-        # Extract documents for reranking
-        docs = results['documents'][0]  # Get the list of document summaries
+        # Extract data from results
+        docs = [result.attributes.get("summary", [""])[0] for result in results]
+        ids = [result.id for result in results]
+        attributes = [result.attributes for result in results]
+        distances = [result.dist for result in results]
         
-        # Rerank the documents and get indices
+        # Rerank the documents
         reranked_indices = self.rerank_documents(query, docs)
         
-        # Reorder the results based on reranking
-        reranked_results = {
-            'ids': [results['ids'][0][i] for i in reranked_indices],
-            'documents': [[results['documents'][0][i] for i in reranked_indices]],
-            'metadatas': [[results['metadatas'][0][i] for i in reranked_indices]],
-            'distances': [results['distances'][0][i] for i in reranked_indices]
+        # Reorder results
+        return {
+            'ids': [ids[i] for i in reranked_indices],
+            'documents': [[docs[i] for i in reranked_indices]],
+            'metadatas': [[attributes[i] for i in reranked_indices]],
+            'distances': [distances[i] for i in reranked_indices]
         }
-        
-        return reranked_results
+
 
 if __name__ == "__main__":
     
     embedder = CodeEmbedder()
-    embedder.embed_directory(CODE_REPO_PATH)
+    # embedder.embed_directory("../sephora-tiktok-trends-main")
     
     # Test the search function
     results = embedder.search("Explain how comments are loaded from vector database and how is the chat response generated from them?")
     
-    # Print results in a clean format
+    # # Print results in a clean format
     for i, (summary, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0]), 1):
         print(f"\n=== Result {i} ===")
         print(f"File: {metadata['file_path']}")
         print(f"Type: {metadata['type']}")
         print(f"Name: {metadata['name']}")
+        print(f"Language: {metadata['language']}")
         print("\nSummary:")
         print(summary)
         print("\nCode:")
@@ -199,8 +224,8 @@ if __name__ == "__main__":
         print("\nDocstring:")
         print(metadata['docstring'])
         print("\nFunction Calls:")
-        print(metadata['function_calls'])
+        print(metadata.get('function_calls', ''))
         print("\nClass Instances:")
-        print(metadata['class_instances'])
+        print(metadata.get('class_instances', ''))
         print("=" * 50)
     

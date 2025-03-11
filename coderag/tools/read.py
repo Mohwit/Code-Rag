@@ -9,8 +9,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
-print ("CODE_REPO_PATH", CODE_REPO_PATH)
-
 
 def read_code_file(file_path, start_line=None, end_line=None):
     """
@@ -65,7 +63,7 @@ def read_code_file(file_path, start_line=None, end_line=None):
 if __name__ == "__main__":
     # Example usage
     try:
-        file_path = CODE_REPO_PATH + '3423424sdds'
+        file_path = "../sephora-tiktok-trends-main/backend/invertedIndexData/InvertedIndex.py"
         # Read entire file
         content = read_code_file(file_path)
         print("Complete file content:")
@@ -77,4 +75,3 @@ if __name__ == "__main__":
         print(content)
     except (FileNotFoundError, IOError, ValueError) as e:
         print(f"Error: {e}")
-
