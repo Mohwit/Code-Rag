@@ -313,7 +313,7 @@ async def fetch_file(request: Request, path: str):
     print(path)
     # Construct full file path
     full_path = os.path.join(UPLOAD_DIR, '3423424sdds' ,  path)
-    print(full_path)
+    #print ("\n\n SESSION DIR", full_path)
 
     # Validate file existence
     if not os.path.isfile(full_path):
