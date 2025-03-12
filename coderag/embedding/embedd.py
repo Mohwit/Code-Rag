@@ -18,7 +18,7 @@ TURBOPUFFER_API_KEY = os.getenv("TURBOPUFFER_API_KEY")
 tpuf.api_base_url = "https://gcp-us-central1.turbopuffer.com"
 
 class CodeEmbedder:
-    def __init__(self, collection_name: str = "sephora-tiktok-trends", 
+    def __init__(self, collection_name: str = "uploaded_folder", 
                  model_name: str = "all-MiniLM-L6-v2"):
         """Initialize TurboPuffer namespace and sentence transformer."""
         self.namespace = tpuf.Namespace(
@@ -181,7 +181,7 @@ class CodeEmbedder:
             distance_metric="cosine_distance",
             include_attributes=True,
             include_vectors=False,
-            filter=filter_expr
+            #filter=filter_expr
         )
         
         # Extract data from results

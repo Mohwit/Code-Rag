@@ -25,6 +25,7 @@ from tools.write import create_code_file
 from tools.search import search_similar_code
 
 from utils.prompts import system_prompt
+from embedding.embedd import CodeEmbedder
 
 load_dotenv()
 
@@ -318,6 +319,7 @@ async def fetch_file(request: Request, path: str):
     if not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="File not found")
 
+
     return FileResponse(full_path, filename=os.path.basename(full_path))
 
 
@@ -332,7 +334,7 @@ async def upload_folder(files: List[UploadFile] = File(...), session_id: str = F
     
     # Generate a new session_id if none provided
     if not session_id:
-        session_id = "3423424sdds"
+        session_id = "3423424sdds"  # Consider using a UUID instead
     
     # Create a session directory
     session_dir = os.path.join(UPLOAD_DIR, session_id)
@@ -349,11 +351,18 @@ async def upload_folder(files: List[UploadFile] = File(...), session_id: str = F
         # Save the file locally
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        
         file_count += 1
     
     # Store the mapping between session and folder
     session_folder_mapping[session_id] = True
+    
+    # Initialize the embedder
+    print("EMBEDDING ...")
+    embedder = CodeEmbedder()  # Set verbose to True to see detailed logs
+    
+    # Embed all code in the SESSION directory, not a constant path
+    num_embedded = embedder.embed_directory(session_dir)
+    print(f"Embedded {num_embedded} code chunks from {session_dir}")
     
     return FolderUploadResponse(
         session_id=session_id,
