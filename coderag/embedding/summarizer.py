@@ -1,4 +1,6 @@
 """Module for chunking and summarizing Python code at class and function levels."""
+
+from globals import CODE_STORING_PATH
 import sys
 import os
 from multiprocessing import Pool
@@ -503,7 +505,7 @@ if __name__ == "__main__":
     # Example usage with directory
     from dotenv import load_dotenv
     load_dotenv()
-    test_dir = os.getenv("CODE_REPO_PATH")
+    test_dir = CODE_STORING_PATH
     results = process_directory(test_dir)
     
     # Print results for each file

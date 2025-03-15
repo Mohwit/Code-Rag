@@ -1,11 +1,12 @@
 import os
+from globals import CODE_STORING_PATH
 from dotenv import load_dotenv
 from embedding.embedd import CodeEmbedder
 from embedding.summarizer import process_file
 
 load_dotenv()
 
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+# CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
 def create_code_file(file_path, code):
     """
@@ -21,7 +22,7 @@ def create_code_file(file_path, code):
     """
     # Convert relative path to absolute path if needed
     if not os.path.isabs(file_path):
-        file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip('/'))
+        file_path = os.path.join(CODE_STORING_PATH, file_path.lstrip('/'))
 
     # Ensure the parent directories exist
     directory = os.path.dirname(file_path)

@@ -2,6 +2,7 @@
 """ Testing"""
 
 """RUN : uvicorn agent:app --host 0.0.0.0 --port 8080 --reload"""
+from globals import CODE_STORING_PATH
 
 import anthropic
 import json
@@ -27,6 +28,8 @@ from tools.search import search_similar_code
 from utils.prompts import system_prompt
 from embedding.embedd import CodeEmbedder
 
+
+
 load_dotenv()
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -35,9 +38,9 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploaded_files")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Use the uploaded folder path if available, otherwise use the environment variable
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
-print("CODE_REPO_PATH", CODE_REPO_PATH)
+# # Use the uploaded folder path if available, otherwise use the environment variable
+# CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+# print("CODE_REPO_PATH", CODE_REPO_PATH)
 
 # Store session to folder mapping
 session_folder_mapping = {}
@@ -131,8 +134,8 @@ def process_tool_call(tool_name, tool_input, folder_path=None):
     # If a folder path is provided, temporarily set it as the CODE_REPO_PATH
     original_code_repo_path = None
     if folder_path:
-        original_code_repo_path = os.environ.get("CODE_REPO_PATH")
-        os.environ["CODE_REPO_PATH"] = folder_path
+        original_code_repo_path = CODE_STORING_PATH
+        CODE_STORING_PATH = folder_path
 
     try:
         if tool_name == "read_code_file":
@@ -147,7 +150,7 @@ def process_tool_call(tool_name, tool_input, folder_path=None):
     finally:
         # Restore the original CODE_REPO_PATH if it was changed
         if original_code_repo_path:
-            os.environ["CODE_REPO_PATH"] = original_code_repo_path
+            CODE_STORING_PATH = original_code_repo_path
 
 tool_name = None 
 tool_result = []  # Convert to list if it's not already

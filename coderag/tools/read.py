@@ -2,13 +2,13 @@
 This tool is used to read the content of a file.
 It can read the entire file or a specific line range.
 """
-
+from globals import CODE_STORING_PATH
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+# CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
 def read_code_file(file_path, start_line=None, end_line=None):
     """
@@ -29,10 +29,15 @@ def read_code_file(file_path, start_line=None, end_line=None):
         ValueError: If invalid line numbers are provided
     """
     try:
-        # Convert relative path to absolute path if needed
+        # Ensure the file path is correctly resolved
         if not os.path.isabs(file_path):
-            file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip('/'))
+            # Avoid duplicate prepending
+            if not file_path.startswith(CODE_STORING_PATH):
+                file_path = os.path.join(CODE_STORING_PATH, file_path.lstrip("/"))
         
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found at path: {file_path}")
+
         with open(file_path, 'r', encoding='utf-8') as file:
             if start_line is None and end_line is None:
                 return file.read()

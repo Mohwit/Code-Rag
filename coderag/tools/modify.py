@@ -2,7 +2,7 @@
 """
 This tool is used to modify a code file by either replacing a range of lines or inserting new code.
 """
-
+from globals import CODE_STORING_PATH
 import os
 from dotenv import load_dotenv
 from embedding.embedd import CodeEmbedder
@@ -11,7 +11,7 @@ from typing import List, Dict
 
 load_dotenv()
 
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+# CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
 
 def delete_file_embeddings(namespace, file_path: str) -> None:
     """
@@ -46,7 +46,7 @@ def modify_code_file(file_path, new_code):
     try:
         # Convert relative path to absolute path if needed
         if not os.path.isabs(file_path):
-            file_path = os.path.join(os.getenv("CODE_REPO_PATH"), file_path.lstrip('/'))
+            file_path = os.path.join(CODE_STORING_PATH, file_path.lstrip('/'))
 
         # Initialize embedder
         embedder = CodeEmbedder()
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     # Example usage
     try:
         # Create a test file path - use a temporary file for testing
-        file_path = os.path.join(CODE_REPO_PATH, "example.py")
+        file_path = os.path.join(CODE_STORING_PATH, "example.py")
         
         # Sample code to write to the file
         new_code = """

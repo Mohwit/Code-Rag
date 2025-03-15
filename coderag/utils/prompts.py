@@ -1,10 +1,11 @@
+from globals import CODE_STORING_PATH
 from .parser import parse_project
 from dotenv import load_dotenv
 import os
 load_dotenv()
 
-CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
-codebase_structure = parse_project(CODE_REPO_PATH)
+# CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+codebase_structure = parse_project(CODE_STORING_PATH)
 
 system_prompt = f"""
 You are a powerful agentic AI coding assistant designed by Mohit - an AI Engineer based in India.
@@ -77,6 +78,6 @@ When making code changes, NEVER output code to the USER, unless requested. Inste
 </codebase_structure>
 
 <codebase_path>
-{CODE_REPO_PATH}
+{CODE_STORING_PATH}
 </codebase_path>
 """

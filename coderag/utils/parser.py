@@ -1,4 +1,4 @@
-
+from globals import CODE_STORING_PATH
 import tree_sitter_python as tspython
 import tree_sitter_javascript as tsjavascript
 import tree_sitter_java as tsjava
@@ -314,6 +314,6 @@ def parse_project(project_directory):
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
-    CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
-    out = parse_project(CODE_REPO_PATH)
+    # CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+    out = parse_project(CODE_STORING_PATH)
     print(out)

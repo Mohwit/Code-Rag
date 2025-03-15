@@ -1,0 +1,44 @@
+.container {
+  position: relative;
+  width: 100%;
+  font-family: 'Fira Code', monospace;
+}
+
+.highlighted {
+  background-color: #f6f8fa;
+}
+
+.codeWrapper {
+  position: relative;
+  width: 100%;
+}
+
+
+.codeCursor {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 21px;
+  border-radius:6px;
+  border: 1px solid #00000014;
+  background-color: #00b9ff2e;
+  margin-right: 8px;
+  margin-bottom: 4px;
+}
+
+@keyframes cursorBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+
+.container :global(pre) {
+  margin: 0 !important;
+  padding: 16px !important;
+}
+
+.container :global(.react-code-blocks-copy-button) {
+  right: 8px !important;
+  top: 8px !important;
+}
