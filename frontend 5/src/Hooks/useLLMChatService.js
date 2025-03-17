@@ -100,6 +100,7 @@ const useLLMChatService = () => {
     //************************************ LLM CHAT HOOK***********************************************************/   
 
     // Fetch response from backend
+    // Fetch response from backend
     const fetchResponse = async (userMessage, selectedFiles) => {
         setIsLoading(true);
         let accumulatedMessage = "";
@@ -135,12 +136,19 @@ const useLLMChatService = () => {
                     const data = JSON.parse(event.data);
                     receivedData = true;
                     console.log("data:-", data);
+
                     setMessages((prev) =>
                         prev.map((msg) => {
                             if (msg.id === tempAIMessageObj.id) {
+                                // Create the new message object based on data type
+                                let updatedMsg = { ...msg };
+
                                 if (data.type === "message" && data.content?.text) {
                                     accumulatedMessage += data.content.text;
-                                    return { ...msg, text: accumulatedMessage, isLoading: false };
+                                    updatedMsg = {
+                                        ...updatedMsg,
+                                        text: accumulatedMessage
+                                    };
                                 } else if (data.type === "canvas") {
                                     const canvasContent = {
                                         ...data.content,
@@ -151,8 +159,18 @@ const useLLMChatService = () => {
                                         file_path: data.content?.file_path || null,
                                         needsVerification: !!(data.content?.oldFile && data.content?.newFile),
                                     };
-                                    return { ...msg, canvas: [...msg.canvas, canvasContent] };
+                                    updatedMsg = {
+                                        ...updatedMsg,
+                                        canvas: [...msg.canvas, canvasContent]
+                                    };
                                 }
+
+                                // If the event is done, always set isLoading to false
+                                if (data.done) {
+                                    updatedMsg.isLoading = false;
+                                }
+
+                                return updatedMsg;
                             }
                             return msg;
                         })
@@ -164,6 +182,16 @@ const useLLMChatService = () => {
                     }
                 } catch (error) {
                     console.error("Error parsing response:", error);
+
+                    // Update message to remove loading state
+                    setMessages((prev) =>
+                        prev.map((msg) =>
+                            msg.id === tempAIMessageObj.id
+                                ? { ...msg, isLoading: false }
+                                : msg
+                        )
+                    );
+
                     setIsLoading(false);
                     eventSource.close();
                 }
@@ -178,6 +206,15 @@ const useLLMChatService = () => {
                         prev.map((msg) =>
                             msg.id === tempAIMessageObj.id
                                 ? { ...msg, text: "Server error. Please try again.", isLoading: false }
+                                : msg
+                        )
+                    );
+                } else {
+                    // If some data was received, just ensure isLoading is set to false
+                    setMessages((prev) =>
+                        prev.map((msg) =>
+                            msg.id === tempAIMessageObj.id
+                                ? { ...msg, isLoading: false }
                                 : msg
                         )
                     );
@@ -201,7 +238,6 @@ const useLLMChatService = () => {
             ]);
         }
     };
-
 
     return { messages, isLoading, fetchResponse, handleDiffVerification };
 };

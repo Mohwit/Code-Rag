@@ -295,7 +295,7 @@ async def generate_events(user_message: str, session_id: str):
                 if(new_file_content):
                     #FIXME Give previous file path, old file
                     yield f"data: {json.dumps({'type': 'canvas', 'content': {'filename': 'canvas_component.py', 'file_path': 'src/canvas_component.py', 'oldFile': ' ', 'newFile': new_file_content, 'needsVerification': True}})}\n\n"
-                await asyncio.sleep(5)  # Allow time for frontend to process the canvas update
+                await asyncio.sleep(3)  # Allow time for frontend to process the canvas update
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
 
