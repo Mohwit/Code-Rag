@@ -1,24 +1,25 @@
 import { useState, useEffect } from 'react';
-import { 
-  FaFolderPlus, FaTimes, FaFolder, FaFolderOpen, FaFile, 
+import {
+  FaFolderPlus, FaTimes, FaFolder, FaFolderOpen, FaFile,
   FaChevronDown, FaChevronRight, FaPlus, FaDownload, FaEllipsisV
 } from 'react-icons/fa';
-import { notification, Spin, Empty, Button ,Modal} from 'antd';
+import { notification, Spin, Empty, Button, Modal } from 'antd';
+import CodeBlockEditor from '../CodeBlock/CodeBlock';
 import { GrView } from "react-icons/gr";
 
 import styles from './Sidebar.module.css';
 
-const Sidebar = ({ 
-  isSidebarOpen, 
-  setIsSidebarOpen, 
-  folderStructure, 
-  uploadFolder, 
-  fetchFile, 
-  isUploading, 
-  progress, 
+const Sidebar = ({
+  isSidebarOpen,
+  setIsSidebarOpen,
+  folderStructure,
+  uploadFolder,
+  fetchFile,
+  isUploading,
+  progress,
   error,
   clearError,
-  onFileSelect 
+  onFileSelect
 }) => {
   const [expandedFolders, setExpandedFolders] = useState({});
   const [activeFile, setActiveFile] = useState(null);
@@ -26,7 +27,7 @@ const Sidebar = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState({});
 
-  
+
   useEffect(() => {
     if (error) {
       notification.error({
@@ -39,7 +40,7 @@ const Sidebar = ({
     }
   }, [error, clearError]);
 
-  
+
   const toggleFolder = (path) => {
     setExpandedFolders(prev => ({
       ...prev,
@@ -49,16 +50,16 @@ const Sidebar = ({
 
 
   const handleAddToInput = (item, e) => {
-     e.stopPropagation();
+    e.stopPropagation();
     setActiveFile(null);
 
     if (onFileSelect) {
-      onFileSelect({ 
+      onFileSelect({
         path: item.path,
         name: item.name,
-        type: 'file' 
+        type: 'file'
       });
-      
+
       notification.success({
         message: 'File Added',
         description: `${item.name} has been added to your message`,
@@ -72,16 +73,16 @@ const Sidebar = ({
   const handleRetrieveFile = async (item, e) => {
     e.stopPropagation();
     setActiveFile(null);
-    
+
     // Set loading state for this file
     setLoadingFiles(prev => ({ ...prev, [item.path]: true }));
-    
+
     try {
-  
+
       const textFile = await fetchFile(item.path);
-      setFileContent({textFile: textFile, path: item.path});
-      setIsModalOpen(true); 
-      
+      setFileContent({ textFile: textFile, path: item.path });
+      setIsModalOpen(true);
+
     } catch (error) {
       notification.error({
         message: 'Retrieval Failed',
@@ -105,7 +106,7 @@ const Sidebar = ({
         }
       });
       setExpandedFolders(initialExpandedState);
-      
+
       // Show success notification on successful upload
       // notification.success({
       //   message: 'Folder Uploaded',
@@ -124,45 +125,45 @@ const Sidebar = ({
           <li key={index} className={styles.folderItem}>
             {item.type === 'folder' ? (
               <>
-                <div 
+                <div
                   className={styles.folderName}
                   onClick={() => toggleFolder(item.path)}
                 >
                   <span className={styles.folderToggle}>
                     {item.children && item.children.length > 0 && (
-                      expandedFolders[item.path] 
-                      ? <FaChevronDown className={styles.chevronIcon} /> 
-                      : <FaChevronRight className={styles.chevronIcon} />
+                      expandedFolders[item.path]
+                        ? <FaChevronDown className={styles.chevronIcon} />
+                        : <FaChevronRight className={styles.chevronIcon} />
                     )}
                   </span>
-                  
-                  {expandedFolders[item.path] 
-                    ? <FaFolderOpen className={styles.folderIcon} /> 
+
+                  {expandedFolders[item.path]
+                    ? <FaFolderOpen className={styles.folderIcon} />
                     : <FaFolder className={styles.folderIcon} />
                   }
                   <span className={styles.itemName}>{item.name}</span>
                 </div>
-                
+
                 {/* Render children only if expanded */}
-                {expandedFolders[item.path] && item.children && item.children.length > 0 && 
+                {expandedFolders[item.path] && item.children && item.children.length > 0 &&
                   <FolderTree items={item.children} level={level + 1} />
                 }
               </>
             ) : (
               <div className={styles.fileContainer}>
-                <div 
+                <div
                   className={styles.fileName}
                   onClick={() => setActiveFile(activeFile === item.path ? null : item.path)}
                 >
                   <span className={styles.fileIndent} />
                   <FaFile className={styles.fileIcon} />
                   <span className={styles.itemName}>{item.name}</span>
-                  
+
                   {/* Options button or loading spinner */}
                   {loadingFiles[item.path] ? (
                     <Spin size="small" className={styles.fileSpinner} />
                   ) : (
-                    <div 
+                    <div
                       className={`${styles.fileOptions} ${activeFile === item.path ? styles.active : ''}`}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -170,18 +171,18 @@ const Sidebar = ({
                     </div>
                   )}
                 </div>
-                
+
                 {/* File options dropdown */}
                 {activeFile === item.path && !loadingFiles[item.path] && (
                   <div className={styles.fileActionsDropdown}>
-                    <div 
+                    <div
                       className={styles.fileAction}
                       onClick={(e) => handleAddToInput(item, e)}
                     >
                       <FaPlus className={styles.actionIcon} />
                       <span>Add to input</span>
                     </div>
-                    <div 
+                    <div
                       className={styles.fileAction}
                       onClick={(e) => handleRetrieveFile(item, e)}
                     >
@@ -219,19 +220,19 @@ const Sidebar = ({
         <div className={styles.sidebarActions}>
           <label className={styles.uploadButton} title="Upload Folder">
             <FaFolderPlus className={styles.uploadIcon} />
-            <input 
-              type="file" 
-              webkitdirectory="true" 
+            <input
+              type="file"
+              webkitdirectory="true"
               directory="true"
-              multiple 
-              onChange={uploadFolder} 
+              multiple
+              onChange={uploadFolder}
               style={{ display: 'none' }}
               id="folderUpload"
             />
           </label>
-          <FaTimes 
-            className={styles.closeIcon} 
-            onClick={() => setIsSidebarOpen(false)} 
+          <FaTimes
+            className={styles.closeIcon}
+            onClick={() => setIsSidebarOpen(false)}
           />
         </div>
       </div>
@@ -242,7 +243,7 @@ const Sidebar = ({
             <span>{progress}%</span>
           </div>
         )}
-        
+
         {folderStructure && folderStructure.length > 0 ? (
           <FolderTree items={folderStructure} />
         ) : (
@@ -267,18 +268,24 @@ const Sidebar = ({
         )}
       </div>
       {/* Ant Design Modal */}
-      <Modal 
-        title={fileContent.path} 
-        open={isModalOpen} 
-        onCancel={() => setIsModalOpen(false)} 
+      <Modal
+        title={fileContent.path}
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
         footer={null}
-        width={700} 
-      
+        width={700}
+
       >
-        <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word", maxHeight: "600px", overflowY: "auto"}}>
+        <CodeBlockEditor
+          language={'python'}
+          value={fileContent.textFile}
+          isHighlighted={''}
+          editorColor="false"
+        />
+        {/* <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word", maxHeight: "600px", overflowY: "auto" }}>
           {fileContent.textFile}
-          
-        </pre>
+
+        </pre> */}
       </Modal>
     </div>
   );

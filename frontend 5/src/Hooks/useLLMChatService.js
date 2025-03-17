@@ -1,4 +1,4 @@
-import { useState, useCallback ,useEffect} from "react";
+import { useState, useCallback, useEffect } from "react";
 
 const useLLMChatService = () => {
     const [messages, setMessages] = useState([]);
@@ -17,7 +17,7 @@ const useLLMChatService = () => {
                         const chosenFile = isAccepted
                             ? updatedCanvas[canvasIndex].newFile
                             : updatedCanvas[canvasIndex].oldFile;
-        
+
                         updatedCanvas[canvasIndex] = {
                             ...updatedCanvas[canvasIndex],
                             oldFile: null,
@@ -36,21 +36,19 @@ const useLLMChatService = () => {
         // Send to backend if accepted
         const latestMessage = messages.find(msg => msg.id === messageId);
         const file_path = latestMessage?.canvas[canvasIndex]?.file_path;
-        if (isAccepted && file_path) {
-            await sendFileToBackend(file_path, messageId, canvasIndex);
-        }
+        await sendFileToBackend(file_path, messageId, canvasIndex, isAccepted);
     };
 
     // Send verified file to backend
-    const sendFileToBackend = async (file_path, messageId, canvasIndex) => {
-         console.log("sending......to.....backend...file_path:",file_path);
+    const sendFileToBackend = async (file_path, messageId, canvasIndex, isAccepted) => {
+        console.log("sending......to.....backend...file_path:", file_path);
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/update-file`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ file_path }),
+                body: JSON.stringify({ file_path: file_path, status: isAccepted }),
             });
 
             if (!response.ok) {
@@ -58,7 +56,7 @@ const useLLMChatService = () => {
             }
 
             const result = await response.json();
-
+            console.log("File sent successfully to backend:", result);
             setMessages((prevMessages) =>
                 prevMessages.map((msg) => {
                     if (msg.id === messageId) {
@@ -99,20 +97,20 @@ const useLLMChatService = () => {
 
 
 
- //************************************ LLM CHAT HOOK***********************************************************/   
+    //************************************ LLM CHAT HOOK***********************************************************/   
 
     // Fetch response from backend
     const fetchResponse = async (userMessage, selectedFiles) => {
         setIsLoading(true);
         let accumulatedMessage = "";
-    
+
         const userMessageObj = {
             id: messages.length + 1,
             text: userMessage,
             type: "user",
         };
         setMessages((prev) => [...prev, userMessageObj]);
-    
+
         const tempAIMessageObj = {
             id: userMessageObj.id + 1,
             text: "",
@@ -121,22 +119,22 @@ const useLLMChatService = () => {
             canvas: [],
         };
         setMessages((prev) => [...prev, tempAIMessageObj]);
-    
+
         let eventSource;
         let receivedData = false; // Track if any data has been received
-    
+
         try {
             let eventSourceUrl = `${import.meta.env.VITE_API_URL}/chat?message=${encodeURIComponent(userMessage)}&sessionId=${sessionId}`;
             if (selectedFiles.length > 0) {
                 eventSourceUrl += "&files=" + encodeURIComponent(JSON.stringify(selectedFiles));
             }
             eventSource = new EventSource(eventSourceUrl);
-    
+
             eventSource.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    receivedData = true; 
-                    console.log("data:-",data);
+                    receivedData = true;
+                    console.log("data:-", data);
                     setMessages((prev) =>
                         prev.map((msg) => {
                             if (msg.id === tempAIMessageObj.id) {
@@ -159,7 +157,7 @@ const useLLMChatService = () => {
                             return msg;
                         })
                     );
-    
+
                     if (data.done) {
                         eventSource.close();
                         setIsLoading(false);
@@ -170,10 +168,10 @@ const useLLMChatService = () => {
                     eventSource.close();
                 }
             };
-    
+
             eventSource.onerror = (error) => {
                 console.error("Streaming error:", error);
-    
+
                 if (!receivedData) {
                     // Only show error message if NO data has been received
                     setMessages((prev) =>
@@ -184,11 +182,11 @@ const useLLMChatService = () => {
                         )
                     );
                 }
-    
+
                 setIsLoading(false);
                 eventSource.close();
             };
-    
+
             // Cleanup eventSource when component unmounts
             return () => {
                 if (eventSource) eventSource.close();
@@ -203,12 +201,9 @@ const useLLMChatService = () => {
             ]);
         }
     };
-    
+
 
     return { messages, isLoading, fetchResponse, handleDiffVerification };
 };
 
 export default useLLMChatService;
-
-
-

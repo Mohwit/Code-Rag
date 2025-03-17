@@ -385,18 +385,21 @@ async def upload_folder(files: List[UploadFile] = File(...), session_id: str = F
     )
 
 @app.post("/update-file")
-#FIXME : Add backend Operations
-async def update_file(request):
+#FIXME ADD BACKEND FUNCTIONALITY
+async def update_file(request: Request):
     """
     API to update a file when the user accepts changes in the diff viewer.
     """
     try:
-        # Simulating saving the file in a database or filesystem
-        path = request.file_path
-        print(path)
-        return {
-            "message": "File updated successfully",
-        }
+        data = await request.json()  # Extract JSON payload correctly
+        path = data.get("file_path")  # Use .get() to prevent KeyError
+        status = data.get("status")
+
+        print("Received path:", path)
+        print("Received status:", status)
+
+        return {"message": "File updated successfully"}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
