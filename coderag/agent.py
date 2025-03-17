@@ -27,6 +27,7 @@ from tools.search import search_similar_code
 from utils.prompts import system_prompt
 from embedding.embedd import CodeEmbedder
 
+old_code = ''
 
 
 load_dotenv()
@@ -80,14 +81,6 @@ tools = [
                 "new_code": {
                     "type": "string",
                     "description": "New code to insert or replace with"
-                },
-                "start_line": {
-                    "type": "integer",
-                    "description": "Optional starting line number for modification (1-based indexing)"
-                },
-                "end_line": {
-                    "type": "integer",
-                    "description": "Optional ending line number for modification (1-based indexing)"
                 }
             },
             "required": ["file_path", "new_code"]
@@ -140,7 +133,9 @@ def process_tool_call(tool_name, tool_input, folder_path=None):
         if tool_name == "read_code_file":
             return read_code_file(**tool_input)
         elif tool_name == "modify_code_file":
-            return modify_code_file(**tool_input)
+            global old_code
+            new_code, old_code, llm =  modify_code_file(**tool_input)
+            return llm
         elif tool_name == "create_code_file":
             return create_code_file(**tool_input)
         elif tool_name == "search_similar_code":
@@ -294,7 +289,7 @@ async def generate_events(user_message: str, session_id: str):
                 print("==========================|<|>|======================================")
                 if(new_file_content):
                     #FIXME Give previous file path, old file
-                    yield f"data: {json.dumps({'type': 'canvas', 'content': {'filename': 'canvas_component.py', 'file_path': 'src/canvas_component.py', 'oldFile': ' ', 'newFile': new_file_content, 'needsVerification': True}})}\n\n"
+                    yield f"data: {json.dumps({'type': 'canvas', 'content': {'filename': 'canvas_component.py', 'file_path': 'src/canvas_component.py', 'oldFile': old_code, 'newFile': new_file_content, 'needsVerification': True}})}\n\n"
                 await asyncio.sleep(5)  # Allow time for frontend to process the canvas update
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"

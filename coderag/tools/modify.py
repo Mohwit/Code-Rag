@@ -43,10 +43,19 @@ def modify_code_file(file_path, new_code):
         FileNotFoundError: If the specified file doesn't exist
         IOError: If there's an error modifying the file
     """
+
     try:
         # Convert relative path to absolute path if needed
-        if not os.path.isabs(file_path):
-            file_path = os.path.join(CODE_STORING_PATH, file_path.lstrip('/'))
+        # if not os.path.isabs(file_path):
+        #     file_path = os.path.join(CODE_STORING_PATH, file_path.lstrip('/'))
+        
+
+
+        # Read the old content
+        old_code = ""
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as file:
+                old_code = file.read()
 
         # Initialize embedder
         embedder = CodeEmbedder()
@@ -66,8 +75,9 @@ def modify_code_file(file_path, new_code):
         # Read and return the updated content
         with open(file_path, 'r', encoding='utf-8') as file:
             updated_content = file.read()
-            
-        return f"File modified and re-embedded successfully at: {file_path}\n", updated_content
+        # print (f"OLD CODE: {old_code}")
+        # quit()
+        return new_code, old_code, updated_content
         
     except FileNotFoundError:
         raise FileNotFoundError(f"File not found at path: {file_path}")
