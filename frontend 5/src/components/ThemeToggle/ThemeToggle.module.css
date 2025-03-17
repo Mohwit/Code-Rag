@@ -1,0 +1,18 @@
+.toggleContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+  }
+  
+  .segmented {
+    background: #f4f4f4;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 5px;
+  }
+  
+  [data-theme="dark"] .segmented {
+    background: #333;
+  }
+  

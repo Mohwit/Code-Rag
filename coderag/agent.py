@@ -3,7 +3,6 @@
 
 """RUN : uvicorn agent:app --host 0.0.0.0 --port 8080 --reload"""
 from globals import CODE_STORING_PATH
-
 import anthropic
 import json
 import os
@@ -244,6 +243,12 @@ class FolderUploadResponse(BaseModel):
     message: str
     file_count: int
 
+def extract_file_content(file_data):
+    """ Extracts file content from different possible formats """
+    if isinstance(file_data, tuple) and len(file_data) == 2:
+        return file_data[1]  # Extract the actual CSS/Code part
+    return file_data  # Assume it's already a string
+
 async def generate_events(user_message: str, session_id: str):
     global tool_result, tool_name  # Ensure tool_name is accessible
 
@@ -283,8 +288,14 @@ async def generate_events(user_message: str, session_id: str):
 
             # Send canvas updates for each tool call
             for result in tool_results:
-                yield f"data: {json.dumps({'type': 'canvas', 'content': {'name': 'none', 'text': result}})}\n\n"
-                await asyncio.sleep(5)  # Allow time for frontend to process
+                print("==========================|<|>|======================================")
+                new_file_content = extract_file_content(result)
+                print(new_file_content)
+                print("==========================|<|>|======================================")
+                if(new_file_content):
+                    #FIXME Give previous file path, old file
+                    yield f"data: {json.dumps({'type': 'canvas', 'content': {'filename': 'canvas_component.py', 'file_path': 'src/canvas_component.py', 'oldFile': ' ', 'newFile': new_file_content, 'needsVerification': True}})}\n\n"
+                await asyncio.sleep(5)  # Allow time for frontend to process the canvas update
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
 
@@ -373,6 +384,22 @@ async def upload_folder(files: List[UploadFile] = File(...), session_id: str = F
         file_count=file_count
     )
 
+@app.post("/update-file")
+#FIXME : Add backend Operations
+async def update_file(request):
+    """
+    API to update a file when the user accepts changes in the diff viewer.
+    """
+    try:
+        # Simulating saving the file in a database or filesystem
+        path = request.file_path
+        print(path)
+        return {
+            "message": "File updated successfully",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/chat")
 async def chat_endpoint(request_data: ChatRequest):
     try:
@@ -395,8 +422,27 @@ async def chat_endpoint(request_data: ChatRequest):
 # Keep the original GET endpoint for backward compatibility
 @app.get("/chat")
 async def chat_endpoint_get(request: Request):
+
+
     try:
         message = request.query_params.get("message", "")
+        files = request.query_params.get("files", "[]")  # Ensure it's a valid JSON string
+        
+        # Parse files from JSON string to list
+        files_list = json.loads(files) if files else []
+        
+        if files_list and isinstance(files_list, list):  # Ensure it's a list
+            file_path = files_list[0].get("path", "")  # Extract the first file's path
+
+            # Add file path to message only if it's not already present
+            if file_path and f"@{file_path}" not in message:
+                message = f"@{file_path} {message}"
+
+        print(f"Final Message: {message}")
+
+    # except json.JSONDecodeError:
+    #     print("Error: Invalid JSON format for files")
+
         session_id = "3423424sdds"
         return StreamingResponse(
             generate_events(message, session_id),

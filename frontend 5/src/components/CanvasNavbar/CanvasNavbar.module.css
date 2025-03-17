@@ -1,0 +1,36 @@
+  
+  .crossIcon {
+    font-size: 1.7rem;
+    color: rgb(40, 39, 39);
+    cursor: pointer;
+    transition: transform 0.2s ease, color 0.2s ease;
+    
+  }
+  
+  .crossIcon:hover {
+    transform: scale(1.1);
+    color: red;
+    
+  }
+
+  .menuItems{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2.5rem;
+  }
+  .decisionMenuItem{
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     gap: 1rem;
+     border: 1px dashed rgb(150, 15, 222);
+     padding: 0.2rem 0.5rem;
+     border-radius: 1rem;
+  }
+  .disabledIcon {
+    color: #A9A9A9 !important;
+    cursor: not-allowed !important;
+    opacity: 0.5 !important;
+  }
+  
