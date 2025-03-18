@@ -414,31 +414,34 @@ async def update_file(request: Request):
         data = await request.json()  # Extract JSON payload correctly
         path = data.get("file_path")  # Use .get() to prevent KeyError
         status = data.get("status")
-        # new_code = data.get("new_code")  # Get the new code from the request
-        
-        print("Received path:", path)
-        print("Received status:", status)
+        new_code = data.get("new_file")  # Get the new code from the request
+        old_code = data.get("old_file")  # Get the old code from the request
+
+        # print("Received path:", path)
+        # print("Received status:", status)
+
+        print (f"NEW CODE FROM FUNCTION IS {new_code}")
         
         if status == True:
             # Initialize embedder
             print("Entered")
-            # embedder = CodeEmbedder()
+            embedder = CodeEmbedder()
             
-            # # Delete existing embeddings for this file
-            # delete_file_embeddings(embedder.namespace, path)
-            # print("Deleting file embeddings ...")
+            # Delete existing embeddings for this file
+            delete_file_embeddings(embedder.namespace, path)
+            print("Deleting file embeddings ...")
             
-            # # Write new content to file
-            # print(f"New code is : {new_code}")
-            # with open(path, 'w', encoding='utf-8') as file:
-            #     file.write(new_code)
-            # print("Writing new content to file ...")
-            # print(new_code)
+            # Write new content to file
+            print(f"New code is : {new_code}")
+            with open(path, 'w', encoding='utf-8') as file:
+                file.write(new_code)
+            print("Writing new content to file ...")
+            print(new_code)
             
-            # # Process and embed the updated file
-            # _, chunks = process_file(path)
-            # if chunks:
-            #     embedder.embed_chunks(chunks)
+            # Process and embed the updated file
+            _, chunks = process_file(path)
+            if chunks:
+                embedder.embed_chunks(chunks)
             print("New Embeddings Done ...")
             
             return {"message": "File updated successfully"}
