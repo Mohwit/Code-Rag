@@ -57,27 +57,29 @@ def modify_code_file(file_path, new_code):
             with open(file_path, 'r', encoding='utf-8') as file:
                 old_code = file.read()
 
-        # Initialize embedder
-        embedder = CodeEmbedder()
+        # # Initialize embedder
+        # embedder = CodeEmbedder()
         
-        # Delete existing embeddings for this file
-        delete_file_embeddings(embedder.namespace, file_path)
+        # # Delete existing embeddings for this file
+        # delete_file_embeddings(embedder.namespace, file_path)
             
+        # # Write new content to file
+        # with open(file_path, 'w', encoding='utf-8') as file:
+        #     file.write(new_code)
+        
+        # # Process and embed the updated file
+        # _, chunks = process_file(file_path)
+        # if chunks:
+        #     embedder.embed_chunks(chunks)
+
         # Write new content to file
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(new_code)
-        
-        # Process and embed the updated file
-        _, chunks = process_file(file_path)
-        if chunks:
-            embedder.embed_chunks(chunks)
-            
+
         # Read and return the updated content
         with open(file_path, 'r', encoding='utf-8') as file:
             updated_content = file.read()
-        # print (f"OLD CODE: {old_code}")
-        # quit()
-        return new_code, old_code, updated_content
+        return new_code, old_code, updated_content, file_path
         
     except FileNotFoundError:
         raise FileNotFoundError(f"File not found at path: {file_path}")

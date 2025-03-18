@@ -26,8 +26,11 @@ from tools.search import search_similar_code
 
 from utils.prompts import system_prompt
 from embedding.embedd import CodeEmbedder
+from embedding.summarizer import process_file
 
 old_code = ''
+new_code_llm = ''
+file_path_with_modification = ''
 
 
 load_dotenv()
@@ -120,6 +123,21 @@ tools = [
     }
 ]
 
+def delete_file_embeddings(namespace, file_path: str) -> None:
+    """
+    Delete all embeddings for a specific file from TurboPuffer.
+    
+    Args:
+        namespace: TurboPuffer namespace
+        file_path (str): Path to the file whose embeddings should be deleted
+    """
+    # Delete documents where file_path matches exactly
+    rows_affected = namespace.delete_by_filter(
+        ['file_path', 'Eq', file_path]
+    )
+    
+    print(f"Deleted {rows_affected} embeddings for file: {file_path}")
+
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 def process_tool_call(tool_name, tool_input, folder_path=None):
@@ -133,8 +151,9 @@ def process_tool_call(tool_name, tool_input, folder_path=None):
         if tool_name == "read_code_file":
             return read_code_file(**tool_input)
         elif tool_name == "modify_code_file":
-            global old_code
-            new_code, old_code, llm =  modify_code_file(**tool_input)
+            global old_code, new_code_llm, file_path_with_modification
+            new_code_llm, old_code, llm, file_path_with_modification =  modify_code_file(**tool_input)
+            print ("NEW CODE FROM FUNCTON IS ", new_code_llm)
             return llm
         elif tool_name == "create_code_file":
             return create_code_file(**tool_input)
@@ -289,7 +308,7 @@ async def generate_events(user_message: str, session_id: str):
                 print("==========================|<|>|======================================")
                 if(new_file_content):
                     #FIXME Give previous file path, old file
-                    yield f"data: {json.dumps({'type': 'canvas', 'content': {'filename': 'canvas_component.py', 'file_path': 'src/canvas_component.py', 'oldFile': old_code, 'newFile': new_file_content, 'needsVerification': True}})}\n\n"
+                    yield f"data: {json.dumps({'type': 'canvas', 'content': {'filename': 'canvas_component.py', 'file_path': file_path_with_modification, 'oldFile': old_code, 'newFile': new_file_content, 'needsVerification': True}})}\n\n"
                 await asyncio.sleep(5)  # Allow time for frontend to process the canvas update
         else:
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
@@ -392,6 +411,36 @@ async def update_file(request: Request):
 
         print("Received path:", path)
         print("Received status:", status)
+
+        if status == True:
+            # Initialize embedder
+            print ("Entered")
+
+            embedder = CodeEmbedder()
+            
+            # Delete existing embeddings for this file
+            delete_file_embeddings(embedder.namespace, path)
+            print ("Deleting file embeddings ...")
+                
+            # Write new content to file
+            global new_code_llm
+            print (f"New code is : {new_code_llm}")
+            with open(path, 'w', encoding='utf-8') as file:
+                file.write(new_code_llm)
+                print ("Writing new content to file ...")
+                print (new_code_llm)
+
+            
+            # Process and embed the updated file
+            _, chunks = process_file(path)
+            if chunks:
+                embedder.embed_chunks(chunks)
+
+            print ("New Embeddings Done ...")    
+            
+
+    
+
 
         return {"message": "File updated successfully"}
 
