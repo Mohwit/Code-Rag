@@ -153,7 +153,7 @@ def process_tool_call(tool_name, tool_input, folder_path=None):
         elif tool_name == "modify_code_file":
             global old_code, new_code_llm, file_path_with_modification
             new_code_llm, old_code, llm, file_path_with_modification =  modify_code_file(**tool_input)
-            print ("NEW CODE FROM FUNCTON IS ", new_code_llm)
+            print ("NEW CODE FROM FUNCTON IS", new_code_llm)
             return llm
         elif tool_name == "create_code_file":
             return create_code_file(**tool_input)
@@ -366,6 +366,12 @@ async def upload_folder(files: List[UploadFile] = File(...), session_id: str = F
     
     # Create a session directory
     session_dir = os.path.join(UPLOAD_DIR, session_id)
+
+    # Clear the directory if it exists
+    if os.path.exists(session_dir):
+        shutil.rmtree(session_dir)
+
+
     os.makedirs(session_dir, exist_ok=True)
     
     file_count = 0
@@ -408,42 +414,35 @@ async def update_file(request: Request):
         data = await request.json()  # Extract JSON payload correctly
         path = data.get("file_path")  # Use .get() to prevent KeyError
         status = data.get("status")
-
+        # new_code = data.get("new_code")  # Get the new code from the request
+        
         print("Received path:", path)
         print("Received status:", status)
-
+        
         if status == True:
             # Initialize embedder
-            print ("Entered")
-
-            embedder = CodeEmbedder()
+            print("Entered")
+            # embedder = CodeEmbedder()
             
-            # Delete existing embeddings for this file
-            delete_file_embeddings(embedder.namespace, path)
-            print ("Deleting file embeddings ...")
-                
-            # Write new content to file
-            global new_code_llm
-            print (f"New code is : {new_code_llm}")
-            with open(path, 'w', encoding='utf-8') as file:
-                file.write(new_code_llm)
-                print ("Writing new content to file ...")
-                print (new_code_llm)
-
+            # # Delete existing embeddings for this file
+            # delete_file_embeddings(embedder.namespace, path)
+            # print("Deleting file embeddings ...")
             
-            # Process and embed the updated file
-            _, chunks = process_file(path)
-            if chunks:
-                embedder.embed_chunks(chunks)
-
-            print ("New Embeddings Done ...")    
+            # # Write new content to file
+            # print(f"New code is : {new_code}")
+            # with open(path, 'w', encoding='utf-8') as file:
+            #     file.write(new_code)
+            # print("Writing new content to file ...")
+            # print(new_code)
             
-
-    
-
-
-        return {"message": "File updated successfully"}
-
+            # # Process and embed the updated file
+            # _, chunks = process_file(path)
+            # if chunks:
+            #     embedder.embed_chunks(chunks)
+            print("New Embeddings Done ...")
+            
+            return {"message": "File updated successfully"}
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
