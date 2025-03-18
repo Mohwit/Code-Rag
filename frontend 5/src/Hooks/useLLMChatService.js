@@ -36,19 +36,22 @@ const useLLMChatService = () => {
         // Send to backend if accepted
         const latestMessage = messages.find(msg => msg.id === messageId);
         const file_path = latestMessage?.canvas[canvasIndex]?.file_path;
-        await sendFileToBackend(file_path, messageId, canvasIndex, isAccepted);
+        // console.log("file_path:", latestMessage.canvas[canvasIndex]);
+        const new_file = latestMessage.canvas[canvasIndex].newFile;
+        const old_file = latestMessage.canvas[canvasIndex].oldFile;
+        await sendFileToBackend(file_path, new_file, old_file, messageId, canvasIndex, isAccepted);
     };
 
     // Send verified file to backend
-    const sendFileToBackend = async (file_path, messageId, canvasIndex, isAccepted) => {
-        console.log("sending......to.....backend...file_path:", file_path);
+    const sendFileToBackend = async (file_path, new_file, old_file, messageId, canvasIndex, isAccepted) => {
+
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/update-file`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ file_path: file_path, status: isAccepted }),
+                body: JSON.stringify({ file_path: file_path, new_file: new_file, old_file: old_file, status: isAccepted }),
             });
 
             if (!response.ok) {

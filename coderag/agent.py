@@ -264,57 +264,66 @@ def extract_file_content(file_data):
     return file_data  # Assume it's already a string
 
 async def generate_events(user_message: str, session_id: str):
-    global tool_result, tool_name  # Ensure tool_name is accessible
-
+    global tool_result, tool_name, old_code, file_path_with_modification
+    
     if session_id not in conversation_histories:
         conversation_histories[session_id] = []
-
+    
     # Avoid duplicate user messages
     if not conversation_histories[session_id] or conversation_histories[session_id][-1] != {"role": "user", "content": user_message}:
         conversation_histories[session_id].append({"role": "user", "content": user_message})
-
+    
     try:
         # Check if this session has associated files
         folder_path = None
         if session_id in session_folder_mapping:
             folder_path = os.path.join(UPLOAD_DIR, session_id)
-            
-        final_response = chat(user_message, folder_path)  # Pass folder_path to chat
-
+        
+        final_response = chat(user_message, folder_path) # Pass folder_path to chat
         print(f"\nFinal Response: {final_response}")
-
+        
         # Tools that require canvas updates
         canvas_tools = {"modify_code_file", "create_code_file"}
-
+        
         # Check if the tool used is one that requires a canvas update
-        use_canvas = tool_name in canvas_tools  
-
+        use_canvas = tool_name in canvas_tools
+        
         # Avoid duplicate assistant responses
         if not conversation_histories[session_id] or conversation_histories[session_id][-1] != {"role": "assistant", "content": final_response}:
             conversation_histories[session_id].append({"role": "assistant", "content": final_response})
-
+        
         if use_canvas:
-            # Ensure tool_result is treated as a list
+            # Wait for the final tool result - use the last one in the list
+            # First, ensure tool_result is treated as a list
             tool_results = tool_result if isinstance(tool_result, list) else [tool_result]
-
-            # After all canvas updates, send the final message to chat
-            yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
-
-            # Send canvas updates for each tool call
-            for result in tool_results:
+            
+            # Process only the last result (most recent)
+            if tool_results:
+                final_result = tool_results[-1]
                 print("==========================|<|>|======================================")
-                new_file_content = extract_file_content(result)
+                new_file_content = extract_file_content(final_result)
                 print(new_file_content)
                 print("==========================|<|>|======================================")
-                if(new_file_content):
-                    #FIXME Give previous file path, old file
+                
+                if new_file_content:
+                    # Send the canvas update first
                     yield f"data: {json.dumps({'type': 'canvas', 'content': {'filename': 'canvas_component.py', 'file_path': file_path_with_modification, 'oldFile': old_code, 'newFile': new_file_content, 'needsVerification': True}})}\n\n"
-                await asyncio.sleep(5)  # Allow time for frontend to process the canvas update
+                    
+                    # Then send the message
+                    yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
+                else:
+                    # If no file content, just send the message
+                    yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
+            else:
+                # No results, just send the message
+                yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
         else:
+            # Not a canvas tool, just send the message
             yield f"data: {json.dumps({'type': 'message', 'content': {'name': 'none', 'text': final_response}})}\n\n"
-
-        tool_result = []
         
+        # Reset tool_result after processing
+        tool_result = []
+    
     except Exception as e:
         print(f"Error occurred: {str(e)}")
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
