@@ -314,5 +314,6 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
     CODE_REPO_PATH = os.getenv("CODE_REPO_PATH")
+    print("CODE_REPO_PATH", CODE_REPO_PATH)
     out = parse_project(CODE_REPO_PATH)
     print(out)

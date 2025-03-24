@@ -181,7 +181,6 @@ class CodeEmbedder:
             distance_metric="cosine_distance",
             include_attributes=True,
             include_vectors=False,
-            filter=filter_expr
         )
         
         # Extract data from results
